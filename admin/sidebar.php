@@ -21,21 +21,18 @@ if (!function_exists('adm_pending')) {
 }
 
 // ── Pending counters ──────────────────────────────────────────
-$pc_smtp     = adm_pending("SELECT COUNT(*) FROM smtp_orders WHERE status='pending'");
-$pc_proxy    = adm_pending("SELECT COUNT(*) FROM proxy_orders WHERE status='pending'");
 $pc_career   = adm_pending("SELECT COUNT(*) FROM career_applications WHERE status='pending'");
 $pc_legal    = adm_pending("SELECT COUNT(*) FROM legal_pages WHERE is_published=0");
 $pc_kyc      = adm_pending("SELECT COUNT(*) FROM kyc_requests WHERE status='pending'");
 $pc_callback = adm_pending("SELECT COUNT(*) FROM callback_requests WHERE status='pending'");
 // Aggregate for the collapsed "Extra" group header
-$pc_extra    = $pc_smtp + $pc_proxy + $pc_career + $pc_legal;
+$pc_extra    = $pc_career + $pc_legal;
 
 // ── Is an "Extra" item currently open? (auto-expand the group) ─
 $__cur  = basename($_SERVER['PHP_SELF']);
 $__tab  = $_GET['tab'] ?? '';
 $extra_pages = ['bulk-email.php','bulk-whatsapp.php','announcement.php','kb.php','career.php',
-                'ga-dashboard.php','ga-settings.php','legal-pages.php','cookie-consent.php',
-                'proxy.php','smtp.php'];
+                'ga-dashboard.php','ga-settings.php','legal-pages.php','cookie-consent.php'];
 $extra_tabs  = ['coupons','referrals'];
 $extra_open  = in_array($__cur, $extra_pages) || in_array($__tab, $extra_tabs);
 ?>
@@ -208,16 +205,6 @@ $extra_open  = in_array($__cur, $extra_pages) || in_array($__tab, $extra_tabs);
       <a href="<?= BASE_URL ?>/admin/index.php?tab=referrals" class="adm-link <?= adm_active([], ['referrals']) ?>">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Referrals
-      </a>
-      <a href="<?= BASE_URL ?>/admin/smtp.php" class="adm-link <?= adm_active(['smtp.php']) ?>">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        SMTP Email
-        <?php if ($pc_smtp > 0): ?><span class="adm-n-badge"><?= $pc_smtp ?></span><?php endif; ?>
-      </a>
-      <a href="<?= BASE_URL ?>/admin/proxy.php" class="adm-link <?= adm_active(['proxy.php']) ?>">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01"/><path d="M7 17h.01"/><path d="M11 7h6"/><path d="M11 17h6"/><path d="M12 10v4"/><circle cx="12" cy="12" r="2"/></svg>
-        Proxy Provider
-        <?php if ($pc_proxy > 0): ?><span class="adm-n-badge"><?= $pc_proxy ?></span><?php endif; ?>
       </a>
       <a href="<?= BASE_URL ?>/admin/bulk-email.php" class="adm-link <?= adm_active(['bulk-email.php']) ?>">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>

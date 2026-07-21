@@ -514,9 +514,9 @@ function status_badge(string $status): string {
             <div class="card-header"><span class="card-title">Quick Actions</span></div>
             <div style="padding:6px 8px">
               <?php foreach ([
-                ['/servers/create.php','Deploy New Server','#eff6ff','#2563eb','<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'],
-                ['/ssh-keys.php','SSH Keys','#f0fdf4','#16a34a','<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>'],
-                ['/firewalls.php','Firewall Rules','#fff7ed','#d97706','<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'],
+                ['/packages.php','Deploy New Server','#eff6ff','#2563eb','<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'],
+                ['/dedicated.php','Dedicated Servers','#f0fdf4','#16a34a','<rect x="3" y="4" width="18" height="8" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/>'],
+                ['/storage.php','Object Storage','#fff7ed','#d97706','<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/>'],
                 ['/billing.php?action=topup','Add Wallet Balance','#faf5ff','#9333ea','<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>'],
               ] as [$href, $label, $bg, $color, $path]): ?>
               <a href="<?= BASE_URL . $href ?>" class="quick-link">

@@ -69,10 +69,6 @@ function exitImpersonate() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="8" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/><line x1="7" y1="8" x2="7.01" y2="8"/><line x1="7" y1="17" x2="7.01" y2="17"/><line x1="11" y1="8" x2="17" y2="8"/></svg>
       Dedicated Servers
     </a>
-    <a href="<?= BASE_URL ?>/ssh-keys.php" class="nav-link <?= $current_page === 'ssh-keys.php' ? 'active' : '' ?>">
-      <svg fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-key-round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle></svg>
-      SSH Keys
-    </a>
     <div class="nav-label">Storage</div>
     <a href="<?= BASE_URL ?>/storage.php" class="nav-link <?= ($current_page === 'storage.php' || str_contains($_SERVER['REQUEST_URI'],'/storage/')) ? 'active' : '' ?>">
       <svg fill="none" stroke="currentColor" stroke-width="2" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 72 72" style="enable-background:new 0 0 72 72;width:16px" xml:space="preserve"><path d="M40,1.5c-16,0-29,3.6-29,8c0,0.1,0,0.3,0,0.4l0,0l0.8,7c0.8-0.7,1.4-1.1,1.5-1.2l0,0
@@ -83,33 +79,12 @@ function exitImpersonate() {
 	c-12.1,0-21.8-2.1-21.8-4.7c0-2.6,9.8-4.7,21.8-4.7c12.1,0,21.8,2.1,21.8,4.7C61.8,13.1,52,15.3,40,15.3z"></path></svg>
       Object Storage
     </a>
-    <?php if (get_setting('proxy_module_enabled', '1') === '1'): ?>
-<div class="nav-label">Proxy</div>
-<a href="<?= BASE_URL ?>/proxy/"
-   class="nav-link <?= str_contains($_SERVER['REQUEST_URI'], '/proxy') ? 'active' : '' ?>">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="2" y1="12" x2="22" y2="12"/>
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10A15.3 15.3 0 0 1 8 12a15.3 15.3 0 0 1 4-10z"/>
-  </svg>
-  Proxy Services
-</a>
-<?php endif; ?>
-    <div class="nav-label">Email</div>
-    <a href="<?= BASE_URL ?>/email/" class="nav-link <?= str_contains($_SERVER['REQUEST_URI'],'/email/') ? 'active' : '' ?>">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-      SMTP Email
-    </a>
     <div class="nav-label">Networking</div>
     <a href="<?= BASE_URL ?>/dns.php" class="nav-link <?= ($current_page === 'dns.php' || str_contains($_SERVER['REQUEST_URI'],'/dns/')) ? 'active' : '' ?>">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
       DNS Management
     </a>
-    <a href="<?= BASE_URL ?>/firewalls.php" class="nav-link <?= $current_page === 'firewalls.php' ? 'active' : '' ?>">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Firewalls
-    </a>
-    
+
     <div class="nav-label">Support</div>
     <a href="<?= BASE_URL ?>/tickets.php" class="nav-link <?= $current_page === 'tickets.php' ? 'active' : '' ?>">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>

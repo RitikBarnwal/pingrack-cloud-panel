@@ -792,34 +792,6 @@ $os_default_icon     = get_os_icon_url('linux'); // fallback icon
             </div>
           </div>
 
-          <!-- ⑤ SSH Keys -->
-          <div class="cv-sec">
-            <div class="cv-sec-hd">
-              <div class="cv-num">5</div>
-              <div class="cv-sec-title">SSH Keys</div>
-              <span style="font-size:11.5px;color:#94a3b8;margin-left:6px;font-weight:400">optional</span>
-            </div>
-            <?php if (empty($ssh_keys)): ?>
-            <div class="ssh-warn">
-              <strong>No SSH keys added.</strong> Root password will be emailed after deployment.
-              <a href="<?= BASE_URL ?>/ssh-keys.php" style="color:#854d0e;font-weight:700;margin-left:6px">+ Add SSH Key →</a>
-            </div>
-            <?php else: ?>
-            <div class="sshlist">
-              <?php foreach ($ssh_keys as $k): ?>
-              <label class="sshitem" onclick="this.classList.toggle('on')">
-                <input type="checkbox" name="ssh_keys[]" value="<?= $k['id'] ?>">
-                <div>
-                  <div class="sshname"><?= htmlspecialchars($k['name']) ?></div>
-                  <div class="sshfp"><?= htmlspecialchars($k['fingerprint'] ?? '') ?></div>
-                </div>
-              </label>
-              <?php endforeach; ?>
-            </div>
-            <a href="<?= BASE_URL ?>/ssh-keys.php" style="font-size:12.5px;color:#4f46e5;font-weight:700;text-decoration:none">+ Add Another Key</a>
-            <?php endif; ?>
-          </div>
-
           <!-- ⑥ Name -->
           <div class="cv-sec">
             <div class="cv-sec-hd"><div class="cv-num">6</div><div class="cv-sec-title">Server Name</div></div>
