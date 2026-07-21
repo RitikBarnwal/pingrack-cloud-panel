@@ -56,7 +56,7 @@ if (!$prov) {
 }
 if (!$prov || !$prov['api_key']) api_error('Provider not configured.', 503);
 
-$prov_type   = strtolower($prov['provider_type'] ?? 'hetzner');
+$prov_type   = strtolower($prov['provider_type'] ?? 'virtualizor');
 $handler_file = __DIR__ . '/../../servers/actions/' . $prov_type . '.php';
 if (!file_exists($handler_file)) api_error("No action handler for provider '{$prov_type}'", 503);
 

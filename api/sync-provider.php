@@ -45,7 +45,7 @@ try {
     }
 
     // Step 2: Connect to correct provider
-    $prov_type = strtolower($prov['provider_type'] ?? 'hetzner');
+    $prov_type = strtolower($prov['provider_type'] ?? 'virtualizor');
     $bootstrap = __DIR__ . '/../providers/' . $prov_type . '/bootstrap.php';
     if (!file_exists($bootstrap)) {
         echo json_encode(['ok'=>false,'error'=>"No bootstrap for provider type '{$prov_type}'"]); exit;

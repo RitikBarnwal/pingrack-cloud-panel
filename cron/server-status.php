@@ -75,7 +75,7 @@ foreach ($groups as $prov_id => $group_servers) {
             continue;
         }
 
-        $prov_type = strtolower($provider['provider_type'] ?? 'hetzner');
+        $prov_type = strtolower($provider['provider_type'] ?? 'virtualizor');
         $bootstrap = __DIR__ . '/../providers/' . $prov_type . '/bootstrap.php';
 
         if (!file_exists($bootstrap)) {
@@ -100,7 +100,7 @@ foreach ($groups as $prov_id => $group_servers) {
 
             try {
                 // Provider-specific status endpoint
-                $ptype = strtolower($provider['provider_type'] ?? 'hetzner');
+                $ptype = strtolower($provider['provider_type'] ?? 'virtualizor');
                 $total_bw = 0; $used_bw = 0;
                 if ($ptype === 'linode') {
                     $raw = $cloud->catalog->http_get('/linode/instances/' . $remote_id);

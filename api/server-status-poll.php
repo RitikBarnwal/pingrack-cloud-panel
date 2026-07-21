@@ -40,7 +40,7 @@ try {
 
     if (!$prov || !$prov['api_key']) throw new Exception('No provider');
 
-    $provider_type = strtolower($prov['provider_type'] ?? 'hetzner');
+    $provider_type = strtolower($prov['provider_type'] ?? 'virtualizor');
     require_once __DIR__ . '/../providers/' . $provider_type . '/bootstrap.php';
     CloudProvider::reset();
     $cloud = new CloudProvider($prov['api_key']);

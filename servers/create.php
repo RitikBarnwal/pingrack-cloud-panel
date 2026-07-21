@@ -268,7 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
                           ?: (int)($region_info['provider_id'] ?? ($active_provs[array_key_first($active_provs)]['id'] ?? 0));
             $prov_row     = get_provider($prov_id);
 
-            $prov_type_slug = strtolower($prov_row['provider_type'] ?? 'hetzner');
+            $prov_type_slug = strtolower($prov_row['provider_type'] ?? 'virtualizor');
             $bootstrap_file = __DIR__ . '/../providers/' . $prov_type_slug . '/bootstrap.php';
             if (!file_exists($bootstrap_file)) {
                 throw new RuntimeException("No bootstrap found for provider type '{$prov_type_slug}'.");

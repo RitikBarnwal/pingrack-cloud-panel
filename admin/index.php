@@ -472,7 +472,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // ── Provider edit ────────────────────────────────────
         if ($action === 'save_provider') {
             $pid   = (int)($_POST['provider_id'] ?? 0);
-            $ptype = strtolower(trim($_POST['provider_type'] ?? 'hetzner'));
+            $ptype = strtolower(trim($_POST['provider_type'] ?? 'virtualizor'));
             $prov  = get_provider($pid);
             if (!$prov) { $err = 'Provider not found.'; }
             elseif (!in_array($ptype, $available_types)) { $err = "Unknown provider type '{$ptype}'."; }
@@ -1109,7 +1109,7 @@ try {
         <div class="card-head">
           <span class="card-title"><?= htmlspecialchars($prov['display_name']) ?></span>
           <?php
-            $ptype_plan = strtolower($prov['provider_type'] ?? 'hetzner');
+            $ptype_plan = strtolower($prov['provider_type'] ?? 'virtualizor');
             $is_hetzner = ($ptype_plan === 'hetzner');
           ?>
           <?php if ($is_hetzner): ?>

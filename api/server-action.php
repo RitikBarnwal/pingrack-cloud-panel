@@ -48,7 +48,7 @@ if (!$prov || !$prov['api_key']) {
     echo json_encode(['ok'=>false,'error'=>'Provider not configured.']); exit;
 }
 
-$provider_type = strtolower($prov['provider_type'] ?? 'hetzner');
+$provider_type = strtolower($prov['provider_type'] ?? 'virtualizor');
 
 // Load provider-specific action handler
 $handler_file = __DIR__ . '/../servers/actions/' . $provider_type . '.php';

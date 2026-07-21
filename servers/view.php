@@ -24,7 +24,7 @@ if (!$server) { header('Location: ' . BASE_URL . '/servers.php'); exit; }
 
 // Provider info — server ke source_provider_id se fetch karo
 $prov_row = null;
-$prov_type = 'hetzner';
+$prov_type = 'virtualizor';
 try {
     $spid = (int)($server['source_provider_id'] ?? 0);
     if ($spid) {
@@ -38,7 +38,7 @@ try {
         $ps->execute([$server['plan_slug'] ?? '']);
         $prov_row = $ps->fetch() ?: null;
     }
-    if ($prov_row) $prov_type = strtolower($prov_row['provider_type'] ?? 'hetzner');
+    if ($prov_row) $prov_type = strtolower($prov_row['provider_type'] ?? 'virtualizor');
 } catch (Throwable $e) {}
 
 // Decrypt root password
@@ -181,7 +181,7 @@ $provider_tabs = [
     ],
     // Future providers
 ];
-$tabs = $provider_tabs[$prov_type] ?? $provider_tabs['hetzner'];
+$tabs = $provider_tabs[$prov_type] ?? $provider_tabs['virtualizor'];
 
 function turl(int $id, string $tab): string {
     return BASE_URL . '/servers/view.php?id=' . $id . '&tab=' . $tab;

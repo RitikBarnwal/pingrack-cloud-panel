@@ -66,7 +66,7 @@ if (!$is_admin && (int)$server['user_id'] !== $uid) {
 }
 
 // ── Load provider credentials ─────────────────────────────────────
-$prov_type  = $server['provider_type'] ?? 'hetzner';
+$prov_type  = $server['provider_type'] ?? 'virtualizor';
 $prov_id = (int)($server['source_provider_id'] ?? 0);
 $st = db()->prepare(
     "SELECT *

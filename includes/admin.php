@@ -20,11 +20,11 @@ function get_provider(int $id): ?array {
 function save_provider(array $d, ?int $id=null): int {
     if ($id) {
         db()->prepare('UPDATE providers SET display_name=?,api_key=?,margin_pct=?,is_active=?,currency_base=?,provider_type=? WHERE id=?')
-           ->execute([$d['display_name'],$d['api_key'],$d['margin_pct'],$d['is_active']??1,strtoupper($d['currency_base']??'EUR'),$d['provider_type']??'hetzner',$id]);
+           ->execute([$d['display_name'],$d['api_key'],$d['margin_pct'],$d['is_active']??1,strtoupper($d['currency_base']??'EUR'),$d['provider_type']??'virtualizor',$id]);
         return $id;
     }
     db()->prepare('INSERT INTO providers (slug,display_name,api_key,margin_pct,currency_base,is_active,provider_type) VALUES(?,?,?,?,?,?,?)')
-       ->execute([$d['slug'],$d['display_name'],$d['api_key'],$d['margin_pct']??0,strtoupper($d['currency_base']??'EUR'),$d['is_active']??1,$d['provider_type']??'hetzner']);
+       ->execute([$d['slug'],$d['display_name'],$d['api_key'],$d['margin_pct']??0,strtoupper($d['currency_base']??'EUR'),$d['is_active']??1,$d['provider_type']??'virtualizor']);
     return (int)db()->lastInsertId();
 }
 function mark_provider_synced(int $id, bool $ok, string $note=''): void {
