@@ -58,15 +58,18 @@ if ($prov) {
         ['http',  4082, 'Enduser API (non-SSL)'],
     ];
 
-    // Virtualizor hashed auth (same as the client / official SDK)
-    $rand    = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'), 0, 8);
-    $apikey  = $rand . $key;
-    $apipass = md5($rand . $pass);
+    // Virtualizor admin auth (matches the official SDK): adminapikey/adminapipass
+    // raw, plus apikey = randstr(8) . md5(pass . randstr).
+    $rand    = strtolower(substr(str_shuffle('abcdefghijklmnopqrstuvwxyz0123456789'), 0, 8));
+    $apikey  = $rand . md5($pass . $rand);
 
     foreach ($probes as [$scheme, $port, $label]) {
         $base = $scheme . '://' . $hostOnly . ':' . $port . '/index.php';
-        $url  = $base . '?api=json&apikey=' . urlencode($apikey) . '&apipass=' . urlencode($apipass) . '&act=plans';
-        $shown = $scheme . '://' . $hostOnly . ':' . $port . '/index.php?api=json&apikey=' . substr($apikey,0,8) . '…&apipass=<md5>&act=plans';
+        $url  = $base . '?act=plans&api=json'
+              . '&adminapikey=' . rawurlencode($key)
+              . '&adminapipass=' . rawurlencode($pass)
+              . '&apikey=' . rawurlencode($apikey);
+        $shown = $scheme . '://' . $hostOnly . ':' . $port . '/index.php?act=plans&api=json&adminapikey=<KEY>&adminapipass=<PASS>&apikey=' . substr($apikey,0,8) . '…';
 
         $ch = curl_init();
         curl_setopt_array($ch, [

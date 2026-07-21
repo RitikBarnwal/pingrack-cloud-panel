@@ -103,21 +103,35 @@ class VirtualizorClient
             : $this->base;
     }
 
-    private function authQs(): string
+    /**
+     * Build the auth query string, matching the official Virtualizor SDK.
+     *   apikey = <8 random chars> . md5(api_pass . <same 8 random chars>)
+     * Admin API also sends the raw key/pass as adminapikey / adminapipass.
+     * Enduser API (accessed with admin creds) sends only the hashed apikey.
+     */
+    private function authQs(bool $admin): string
     {
-        // Virtualizor API auth (matches the official SDK): the raw key/pass are
-        // NOT sent directly. Prepend an 8-char random string to the key, and
-        // send apipass = md5(rand . pass). Sending them raw returns the HTML
-        // login page.
-        $rand    = self::randStr(8);
-        $apikey  = $rand . $this->apiKey;
-        $apipass = md5($rand . $this->apiPass);
-        return http_build_query(['api' => 'json', 'apikey' => $apikey, 'apipass' => $apipass]);
+        $rand   = self::randStr(8);
+        $apikey = $rand . md5($this->apiPass . $rand);
+
+        if ($admin) {
+            return http_build_query([
+                'api'          => 'json',
+                'adminapikey'  => $this->apiKey,
+                'adminapipass' => $this->apiPass,
+                'apikey'       => $apikey,
+            ]);
+        }
+        return http_build_query([
+            'api'    => 'json',
+            'apikey' => $apikey,
+        ]);
     }
 
     private static function randStr(int $len): string
     {
-        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        // Lowercase alphanumeric, matching the SDK's generateRandStr().
+        $chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
         $out = '';
         for ($i = 0; $i < $len; $i++) $out .= $chars[random_int(0, strlen($chars) - 1)];
         return $out;
@@ -126,7 +140,8 @@ class VirtualizorClient
     public function get(string $action, array $params = []): array
     {
         $params['act'] = $action;
-        return $this->req('GET', $this->baseFor($action) . '?' . $this->authQs() . '&' . http_build_query($params));
+        $admin = !in_array($action, self::ENDUSER_ACTS, true);
+        return $this->req('GET', $this->baseFor($action) . '?' . $this->authQs($admin) . '&' . http_build_query($params));
     }
 
     // qs_extra = extra query string params (besides auth+act)
@@ -134,7 +149,8 @@ class VirtualizorClient
     public function post(string $action, array $qs_extra = [], array $body = []): array
     {
         $qs_extra['act'] = $action;
-        $url = $this->baseFor($action) . '?' . $this->authQs() . '&' . http_build_query($qs_extra);
+        $admin = !in_array($action, self::ENDUSER_ACTS, true);
+        $url = $this->baseFor($action) . '?' . $this->authQs($admin) . '&' . http_build_query($qs_extra);
         return $this->req('POST', $url, $body);
     }
 
