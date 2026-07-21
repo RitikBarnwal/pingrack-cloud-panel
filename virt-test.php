@@ -58,10 +58,15 @@ if ($prov) {
         ['http',  4082, 'Enduser API (non-SSL)'],
     ];
 
+    // Virtualizor hashed auth (same as the client / official SDK)
+    $rand    = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'), 0, 8);
+    $apikey  = $rand . $key;
+    $apipass = md5($rand . $pass);
+
     foreach ($probes as [$scheme, $port, $label]) {
         $base = $scheme . '://' . $hostOnly . ':' . $port . '/index.php';
-        $url  = $base . '?api=json&apikey=' . urlencode($key) . '&apipass=' . urlencode($pass) . '&act=plans';
-        $shown = $scheme . '://' . $hostOnly . ':' . $port . '/index.php?api=json&apikey=<KEY>&apipass=<PASS>&act=plans';
+        $url  = $base . '?api=json&apikey=' . urlencode($apikey) . '&apipass=' . urlencode($apipass) . '&act=plans';
+        $shown = $scheme . '://' . $hostOnly . ':' . $port . '/index.php?api=json&apikey=' . substr($apikey,0,8) . '…&apipass=<md5>&act=plans';
 
         $ch = curl_init();
         curl_setopt_array($ch, [

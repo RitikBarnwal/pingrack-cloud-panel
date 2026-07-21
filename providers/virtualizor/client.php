@@ -105,7 +105,22 @@ class VirtualizorClient
 
     private function authQs(): string
     {
-        return http_build_query(['api' => 'json', 'apikey' => $this->apiKey, 'apipass' => $this->apiPass]);
+        // Virtualizor API auth (matches the official SDK): the raw key/pass are
+        // NOT sent directly. Prepend an 8-char random string to the key, and
+        // send apipass = md5(rand . pass). Sending them raw returns the HTML
+        // login page.
+        $rand    = self::randStr(8);
+        $apikey  = $rand . $this->apiKey;
+        $apipass = md5($rand . $this->apiPass);
+        return http_build_query(['api' => 'json', 'apikey' => $apikey, 'apipass' => $apipass]);
+    }
+
+    private static function randStr(int $len): string
+    {
+        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        $out = '';
+        for ($i = 0; $i < $len; $i++) $out .= $chars[random_int(0, strlen($chars) - 1)];
+        return $out;
     }
 
     public function get(string $action, array $params = []): array
