@@ -321,15 +321,15 @@ try {
         'price_hourly'       => $price_hr,
         'price_monthly'      => round($price_hr * 730, 2),
         'currency'           => $currency,
-        'root_password'      => $root_pass,
-        // Bandwidth from plan or live fetch (0 if not available yet — cron will update)
-        'total_bandwidth_gb' => (int)($vps['bandwidth'] ?? 0),
-        'used_bandwidth_gb'  => (float)($vps['used_bandwidth'] ?? 0),
+        'root_password'      => $root_pass
             ? base64_encode(openssl_encrypt(
                 $root_pass, 'AES-128-ECB',
                 substr(hash('sha256', $prov['api_key']), 0, 16)
             ))
             : null,
+        // Bandwidth from plan or live fetch (0 if not available yet — cron will update)
+        'total_bandwidth_gb' => (int)($vps['bandwidth'] ?? 0),
+        'used_bandwidth_gb'  => (float)($vps['used_bandwidth'] ?? 0),
     ]);
 
     log_server_action($server_id, $target_uid, 'create', 'success');

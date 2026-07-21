@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Manual "Run workflow" button in the Actions tab (deploys current main).
+  workflow_dispatch:
+    inputs:
+      skip_composer:
+        description: 'Skip composer install on server (files only)'
+        type: boolean
+        default: false
 
 jobs:
   # ── Continuous Integration: lint every push & PR ───────────────
@@ -38,7 +45,10 @@ jobs:
   deploy:
     name: Deploy to production
     needs: lint
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Runs on push to main, or when triggered manually from the Actions tab.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     concurrency:
       group: production-deploy
@@ -62,6 +72,7 @@ jobs:
             ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
 
       - name: Install dependencies on server
+        if: ${{ github.event.inputs.skip_composer != 'true' }}
         run: |
           ssh -i ~/.ssh/deploy_key -p "${{ secrets.SSH_PORT }}" \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
