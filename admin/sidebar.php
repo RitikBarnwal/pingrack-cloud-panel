@@ -40,6 +40,29 @@ $extra_tabs  = ['coupons','referrals'];
 $extra_open  = in_array($__cur, $extra_pages) || in_array($__tab, $extra_tabs);
 ?>
 
+<!-- ── Collapsible "Extra" group styling (inline so it never depends on admin.css cache) ── -->
+<style>
+.adm-group-head{
+  display:flex;align-items:center;gap:8px;width:100%;
+  margin:12px 0 2px;padding:8px 10px;
+  background:transparent;border:none;border-radius:6px;
+  cursor:pointer;font-family:inherit;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  line-height:1.2;text-align:left;color:rgba(255,255,255,.42);
+  transition:background .15s,color .15s;
+}
+.adm-group-head:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.85)}
+.adm-group-head span{flex:1}
+.adm-group-chev{width:13px;height:13px;flex-shrink:0;opacity:.85;transition:transform .22s cubic-bezier(.4,0,.2,1);transform:rotate(90deg)}
+.adm-group-head.collapsed .adm-group-chev{transform:rotate(0deg)}
+.adm-group-badge{flex-shrink:0}
+.adm-group-items{max-height:0;overflow:hidden;transition:max-height .28s cubic-bezier(.4,0,.2,1)}
+.adm-group-items.open{max-height:720px}
+.adm-group-items .adm-link{padding-left:12px;position:relative}
+.adm-group-items .adm-link::after{content:'';position:absolute;left:4px;top:50%;transform:translateY(-50%);width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.18)}
+.adm-group-items .adm-link.active::after{background:var(--primary,#2563eb)}
+</style>
+
 <!-- ── Overlay (click to close sidebar) ──────────────────── -->
 <div class="adm-overlay" id="adm-overlay" onclick="admCloseSidebar()"></div>
 
