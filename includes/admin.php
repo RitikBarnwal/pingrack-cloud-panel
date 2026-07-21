@@ -40,6 +40,7 @@ function save_provider(array $d, ?int $id=null): int {
     // those columns exist; otherwise we gracefully store JSON in api_key so the
     // panel keeps working even before install-db.php adds the columns.
     $has_cols = _providers_has_col('panel_url') && _providers_has_col('api_pass');
+    $has_loc  = _providers_has_col('location') && _providers_has_col('location_flag');
 
     $api_key = $d['api_key'] ?? '';
     $panel   = $d['panel_url'] ?? '';
@@ -51,24 +52,25 @@ function save_provider(array $d, ?int $id=null): int {
         $api_key = json_encode(['panel_url' => $panel, 'api_key' => $api_key, 'api_pass' => $pass]);
     }
 
+    // Build column/value lists so we only touch columns that exist.
+    $cols = ['display_name' => $d['display_name'], 'api_key' => $api_key,
+             'margin_pct' => $d['margin_pct'] ?? 0,
+             'currency_base' => strtoupper($d['currency_base'] ?? 'EUR'),
+             'is_active' => $d['is_active'] ?? 1, 'provider_type' => $ptype];
+    if ($has_cols) { $cols['panel_url'] = $panel; $cols['api_pass'] = $pass; }
+    if ($has_loc)  { $cols['location'] = $d['location'] ?? ''; $cols['location_flag'] = strtolower($d['location_flag'] ?? ''); }
+
     if ($id) {
-        if ($has_cols) {
-            db()->prepare('UPDATE providers SET display_name=?,api_key=?,panel_url=?,api_pass=?,margin_pct=?,is_active=?,currency_base=?,provider_type=? WHERE id=?')
-               ->execute([$d['display_name'],$api_key,$panel,$pass,$d['margin_pct'],$d['is_active']??1,strtoupper($d['currency_base']??'EUR'),$ptype,$id]);
-        } else {
-            db()->prepare('UPDATE providers SET display_name=?,api_key=?,margin_pct=?,is_active=?,currency_base=?,provider_type=? WHERE id=?')
-               ->execute([$d['display_name'],$api_key,$d['margin_pct'],$d['is_active']??1,strtoupper($d['currency_base']??'EUR'),$ptype,$id]);
-        }
+        $set = implode(',', array_map(fn($c) => "$c=?", array_keys($cols)));
+        $vals = array_values($cols); $vals[] = $id;
+        db()->prepare("UPDATE providers SET $set WHERE id=?")->execute($vals);
         return $id;
     }
 
-    if ($has_cols) {
-        db()->prepare('INSERT INTO providers (slug,display_name,api_key,panel_url,api_pass,margin_pct,currency_base,is_active,provider_type) VALUES(?,?,?,?,?,?,?,?,?)')
-           ->execute([$d['slug'],$d['display_name'],$api_key,$panel,$pass,$d['margin_pct']??0,strtoupper($d['currency_base']??'EUR'),$d['is_active']??1,$ptype]);
-    } else {
-        db()->prepare('INSERT INTO providers (slug,display_name,api_key,margin_pct,currency_base,is_active,provider_type) VALUES(?,?,?,?,?,?,?)')
-           ->execute([$d['slug'],$d['display_name'],$api_key,$d['margin_pct']??0,strtoupper($d['currency_base']??'EUR'),$d['is_active']??1,$ptype]);
-    }
+    $cols = ['slug' => $d['slug']] + $cols;
+    $ph = implode(',', array_fill(0, count($cols), '?'));
+    db()->prepare('INSERT INTO providers (' . implode(',', array_keys($cols)) . ") VALUES ($ph)")
+        ->execute(array_values($cols));
     return (int)db()->lastInsertId();
 }
 function mark_provider_synced(int $id, bool $ok, string $note=''): void {

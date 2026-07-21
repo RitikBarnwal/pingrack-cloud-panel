@@ -59,19 +59,62 @@ class VirtualizorCatalog
     }
 
     // ── OS Templates / Images ─────────────────────────────────
-    // Virtualizor user panel API: act=ostemplate&svs=VPSID
-    // Returns: oslist.{virt_type}.{distro}.{osid} => {...}
-    // We need any valid VPS ID to call this endpoint.
+    // Admin API: act=os lists all OS templates WITHOUT needing a VPS id.
+    // Response shapes vary by build, so we flatten recursively and collect
+    // any entry that has an osid + name.
 
     public function images(int $vpsId = 0): array
     {
         $list = [];
         $seen = [];
 
-        // Fetch ostemplate list — requires a VPS ID (any active VPS on this panel)
-        // If vpsId not provided, try to get one from listservers
+        // Preferred: admin act=os (no VPS required)
+        $rows = [];
+        try {
+            $raw = $this->http->get('os');
+            $rows = $raw['oslist'] ?? $raw['os'] ?? $raw['ostemplates'] ?? [];
+        } catch (Throwable $e) {}
+
+        $collect = function ($node) use (&$collect, &$list, &$seen) {
+            if (!is_array($node)) return;
+            // Leaf OS entry: has a name and looks like an OS template
+            $isLeaf = isset($node['name']) && (isset($node['osid']) || isset($node['fname']) || isset($node['distro']));
+            if ($isLeaf) {
+                $slug  = (string)($node['osid'] ?? '');
+                $label = (string)($node['name'] ?? $node['fname'] ?? ('OS ' . $slug));
+                if ($slug !== '' && !isset($seen[$slug])) {
+                    $seen[$slug] = true;
+                    [$os_name, $os_version] = $this->parseOs($label);
+                    $list[] = [
+                        'slug' => $slug, 'label' => $label,
+                        'os' => $os_name, 'version' => $os_version,
+                        'image_type' => 'system', 'app_description' => null,
+                    ];
+                }
+                return;
+            }
+            // Otherwise recurse. Also handle {osid: "name"} flat maps.
+            foreach ($node as $k => $v) {
+                if (is_array($v)) { $collect($v); }
+                elseif (is_string($v) && ctype_digit((string)$k)) {
+                    $slug = (string)$k;
+                    if (!isset($seen[$slug])) {
+                        $seen[$slug] = true;
+                        [$os_name, $os_version] = $this->parseOs($v);
+                        $list[] = [
+                            'slug' => $slug, 'label' => $v,
+                            'os' => $os_name, 'version' => $os_version,
+                            'image_type' => 'system', 'app_description' => null,
+                        ];
+                    }
+                }
+            }
+        };
+        $collect($rows);
+        if (!empty($list)) return $list;
+
+        // ── Fallback: enduser ostemplate (needs any VPS id) ──────────
         if ($vpsId <= 0) {
-            // Admin API: act=vs → { vs: { vpsid: {...} } }  (fallback: listvs)
             foreach (['vs', 'listvs'] as $act) {
                 try {
                     $sv = $this->http->get($act);
@@ -84,37 +127,12 @@ class VirtualizorCatalog
                 } catch (Throwable $e) {}
             }
         }
+        if ($vpsId <= 0) return $list;
 
-        if ($vpsId <= 0) return $list; // Can't fetch without a VPS ID
-
-        $raw    = $this->http->get('ostemplate', ['svs' => $vpsId]);
-        $oslist = $raw['oslist'] ?? [];
-
-        // oslist structure: {virt_type: {distro: {osid: {osid,name,distro,...}}}}
-        foreach ($oslist as $virt_type => $distros) {
-            if (!is_array($distros)) continue;
-            foreach ($distros as $distro => $os_entries) {
-                if (!is_array($os_entries)) continue;
-                foreach ($os_entries as $osid => $t) {
-                    if (!is_array($t)) continue;
-                    $slug  = (string)($t['osid'] ?? $osid);
-                    $label = $t['name'] ?? 'OS ' . $slug;
-                    if (isset($seen[$slug])) continue;
-                    $seen[$slug] = true;
-
-                    [$os_name, $os_version] = $this->parseOs($label);
-
-                    $list[] = [
-                        'slug'            => $slug,
-                        'label'           => $label,
-                        'os'              => $os_name,
-                        'version'         => $os_version,
-                        'image_type'      => 'system',
-                        'app_description' => null,
-                    ];
-                }
-            }
-        }
+        try {
+            $raw = $this->http->get('ostemplate', ['svs' => $vpsId]);
+            $collect($raw['oslist'] ?? []);
+        } catch (Throwable $e) {}
         return $list;
     }
 

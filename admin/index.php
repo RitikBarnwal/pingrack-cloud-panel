@@ -482,6 +482,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'api_key'       => trim($_POST['api_key'] ?? '') ?: $prov['api_key'],
                     'panel_url'     => trim($_POST['panel_url'] ?? ($prov['panel_url'] ?? '')),
                     'api_pass'      => trim($_POST['api_pass'] ?? '') ?: ($prov['api_pass'] ?? ''),
+                    'location'      => trim($_POST['location'] ?? ''),
+                    'location_flag' => strtolower(trim($_POST['location_flag'] ?? '')),
                     'margin_pct'    => (float)($_POST['margin_pct'] ?? 0),
                     'currency_base' => strtoupper(trim($_POST['currency_base'] ?? 'EUR')),
                     'is_active'     => (int)($_POST['is_active'] ?? 1),
@@ -520,6 +522,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'api_key'       => $key,
                     'panel_url'     => trim($_POST['panel_url'] ?? ''),
                     'api_pass'      => trim($_POST['api_pass'] ?? ''),
+                    'location'      => trim($_POST['location'] ?? ''),
+                    'location_flag' => strtolower(trim($_POST['location_flag'] ?? '')),
                     'margin_pct'    => (float)($_POST['margin_pct'] ?? 0),
                     'currency_base' => strtoupper(trim($_POST['currency_base'] ?? 'EUR')),
                     'is_active'     => (int)($_POST['is_active'] ?? 1),
@@ -3310,6 +3314,10 @@ if ($sel_tid) {
           <div><label class="flabel">Panel URL <span style="font-weight:400;color:#94a3b8">(Virtualizor)</span></label><input name="panel_url" id="epp_panel" class="form-control" placeholder="https://your-panel-ip" style="font-family:monospace"></div>
           <div><label class="flabel">API Pass <span style="font-weight:400;color:#94a3b8">(Virtualizor)</span></label><input name="api_pass" id="epp_pass" class="form-control" placeholder="Leave blank to keep existing" style="font-family:monospace"></div>
         </div>
+        <div class="form-row">
+          <div><label class="flabel">Server Location</label><input name="location" id="epp_loc" class="form-control" placeholder="e.g. Mumbai, India"></div>
+          <div><label class="flabel">Location Flag <span style="font-weight:400;color:#94a3b8">(2-letter code)</span></label><input name="location_flag" id="epp_locflag" class="form-control" placeholder="in, us, sg, de" maxlength="2" style="text-transform:lowercase"></div>
+        </div>
         <div class="form-row full">
           <div>
             <label class="flabel">API Key</label>
@@ -3377,6 +3385,10 @@ if ($sel_tid) {
         <div class="form-row" id="app_virt_fields">
           <div><label class="flabel">Panel URL <span style="font-weight:400;color:#94a3b8">(Virtualizor)</span></label><input name="panel_url" id="app_panel" class="form-control" placeholder="https://your-panel-ip" style="font-family:monospace"></div>
           <div><label class="flabel">API Pass <span style="font-weight:400;color:#94a3b8">(Virtualizor)</span></label><input name="api_pass" id="app_pass" class="form-control" placeholder="API password" style="font-family:monospace"></div>
+        </div>
+        <div class="form-row">
+          <div><label class="flabel">Server Location</label><input name="location" id="app_loc" class="form-control" placeholder="e.g. Mumbai, India"></div>
+          <div><label class="flabel">Location Flag <span style="font-weight:400;color:#94a3b8">(2-letter code)</span></label><input name="location_flag" id="app_locflag" class="form-control" placeholder="in, us, sg, de" maxlength="2" style="text-transform:lowercase"></div>
         </div>
         <div class="form-row full">
           <div>
@@ -3630,6 +3642,8 @@ function openEditProv(prov) {
   // Prefill the actual key/pass so the admin can see what's saved (editable).
   document.getElementById('epp_key').value   = (prov.provider_type === 'proxmox') ? (prov.api_key || '') : apiKey;
   document.getElementById('epp_pass').value  = apiPass;
+  document.getElementById('epp_loc').value     = prov.location || '';
+  document.getElementById('epp_locflag').value = prov.location_flag || '';
   // Virtualizor uses panel/key/pass columns; Proxmox uses a JSON blob in api_key
   document.getElementById('epp_virt_fields').style.display = (prov.provider_type === 'proxmox') ? 'none' : '';
   document.getElementById('epp_cur').value   = prov.currency_base || 'EUR';
