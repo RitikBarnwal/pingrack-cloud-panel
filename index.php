@@ -1,5 +1,17 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
+
+// ── Frontend toggle ───────────────────────────────────────────
+// When the public frontend is disabled, this install acts purely as a
+// management/backup panel: visitors skip the marketing landing page and
+// go straight to login (or their dashboard if already signed in).
+// Controlled per-install via the `frontend_enabled` setting (admin → Settings).
+if (get_setting('frontend_enabled', '1') !== '1') {
+    session_start_safe();
+    header('Location: ' . BASE_URL . (is_logged_in() ? '/dashboard.php' : '/login.php'));
+    exit;
+}
+
 session_start_safe();
 $logged_in = is_logged_in();
 $current   = $logged_in ? current_user() : null;

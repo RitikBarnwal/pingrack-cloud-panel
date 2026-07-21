@@ -17,6 +17,7 @@ $tab = $_GET['tab'] ?? 'whatsapp';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ?? '')) {
     $allowed = [
         'primary_color','primary_color_hover','site_name','company_name',
+        'frontend_enabled',
         'organization_allowed','user_registration_allowed','company_email','company_phone',
         'company_address','company_city','company_state','company_country','company_pin',
         'company_gstin','gst_rate','gst_enabled','company_gst_state',
@@ -310,6 +311,14 @@ function s(string $key, string $default = ''): string {
           <div class="card-body">
             <div class="form-grid">
               <div><label class="flabel">Site Name</label><input name="site_name" class="form-control" value="<?= s('site_name','CloudVault') ?>"></div>
+              <div>
+                <label class="flabel">Public Frontend</label>
+                <select name="frontend_enabled" class="form-control">
+                  <option value="1" <?= get_setting('frontend_enabled','1')==='1'?'selected':'' ?>>Enabled — show landing page at /</option>
+                  <option value="0" <?= get_setting('frontend_enabled','1')==='0'?'selected':'' ?>>Disabled — go straight to login (panel-only)</option>
+                </select>
+                <span style="font-size:11px;color:#94a3b8">Disable when this install is a management/backup panel only.</span>
+              </div>
               <div><label class="flabel">Site Favicon URL <span>(optional)</span></label><input name="site_favicon" class="form-control" value="<?= s('site_favicon') ?>" placeholder="https://..."></div>
               <div><label class="flabel">Site Logo URL (Light) <span>(optional)</span></label><input name="site_logo" class="form-control" value="<?= s('site_logo') ?>" placeholder="https://..."></div>
               <div><label class="flabel">Site Logo URL (Dark)<span>(optional)</span></label><input name="site_logo_d" class="form-control" value="<?= s('site_logo_d') ?>" placeholder="https://..."></div>
