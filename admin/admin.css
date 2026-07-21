@@ -1902,3 +1902,70 @@ input:checked + .toggle-sw::after,
 
   .modal-box { border-radius: var(--r-lg); }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   COLLAPSIBLE NAV GROUP ("Extra")  +  shell polish
+══════════════════════════════════════════════════════════════ */
+.adm-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: calc(100% - 0px);
+  margin-top: 14px;
+  padding: 6px 10px 5px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  color: rgba(255,255,255,.28);
+  transition: color var(--t);
+}
+.adm-group-head:hover { color: rgba(255,255,255,.55); }
+
+.adm-group-chev {
+  width: 11px; height: 11px;
+  flex-shrink: 0;
+  opacity: .7;
+  transition: transform .2s cubic-bezier(.4,0,.2,1);
+  transform: rotate(90deg);   /* expanded → points down */
+}
+.adm-group-head.collapsed .adm-group-chev { transform: rotate(0deg); } /* collapsed → points right */
+
+.adm-group-badge {
+  margin-left: auto;
+  margin-right: 2px;
+}
+
+/* Collapsible body — animated max-height */
+.adm-group-items {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .28s cubic-bezier(.4,0,.2,1);
+}
+.adm-group-items.open {
+  max-height: 720px;   /* generous; enough for all Extra items */
+}
+
+/* Slightly indent grouped links so the hierarchy reads clearly */
+.adm-group-items .adm-link { padding-left: 12px; }
+.adm-group-items .adm-link::after {
+  content: '';
+  position: absolute;
+  left: 4px; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.18);
+}
+.adm-group-items .adm-link.active::after { background: var(--primary); }
+
+/* Shell polish: crisper active link + smoother hover */
+.adm-link.active {
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,.22);
+}
+.adm-nav { padding-bottom: 14px; }
+.adm-nav-lbl:first-of-type { padding-top: 4px; }
