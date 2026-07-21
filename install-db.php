@@ -100,6 +100,8 @@ $alters = [
     // server location defined once at the provider level (packages inherit it)
     ['providers',          'location',     "ALTER TABLE providers ADD COLUMN location VARCHAR(120) NOT NULL DEFAULT '' AFTER api_pass"],
     ['providers',          'location_flag',"ALTER TABLE providers ADD COLUMN location_flag VARCHAR(8) NOT NULL DEFAULT '' AFTER location"],
+    // Virtualizor node (serid) chosen once at the provider level
+    ['providers',          'default_serid',"ALTER TABLE providers ADD COLUMN default_serid VARCHAR(64) NOT NULL DEFAULT '' AFTER location_flag"],
 ];
 
 // ── Run + report ──────────────────────────────────────────────

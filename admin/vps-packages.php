@@ -80,14 +80,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
         $name  = trim($_POST['name'] ?? '');
         $prov  = (int)($_POST['provider_id'] ?? 0);
         $plid  = trim($_POST['virt_plid'] ?? '');
-        $ser   = trim($_POST['virt_serid'] ?? '');
         $osid  = trim($_POST['virt_osid'] ?? '');
+
+        // Node (serid) + location are defined on the provider — inherit them.
+        $ser = ''; $loc = ''; $loc_flag = '';
+        if ($ptype === 'vps' && $prov) {
+            $pr = db()->prepare("SELECT default_serid, location, location_flag FROM providers WHERE id=? LIMIT 1");
+            $pr->execute([$prov]);
+            if ($prow = $pr->fetch()) {
+                $ser      = (string)($prow['default_serid'] ?? '');
+                $loc      = (string)($prow['location'] ?? '');
+                $loc_flag = (string)($prow['location_flag'] ?? '');
+            }
+        }
 
         // Validation differs by type: VPS needs Virtualizor mapping; dedicated does not.
         if ($name === '') {
             $err = 'Package name is required.';
-        } elseif ($ptype === 'vps' && ($prov === 0 || $plid === '' || $ser === '' || $osid === '')) {
-            $err = 'VPS packages need a provider, plan, node and OS.';
+        } elseif ($ptype === 'vps' && ($prov === 0 || $plid === '' || $osid === '')) {
+            $err = 'VPS packages need a provider, plan and OS.';
+        } elseif ($ptype === 'vps' && $ser === '') {
+            $err = 'The selected provider has no Node (serid) set. Edit the provider and choose its node first.';
         } else {
             $slug = trim($_POST['slug'] ?? '');
             if ($slug === '') $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower($name));
@@ -98,8 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
                 'ptype'        => $ptype,
                 'name'         => $name,
                 'slug'         => $slug,
-                'location'     => trim($_POST['location'] ?? ''),
-                'location_flag'=> strtolower(trim($_POST['location_flag'] ?? '')),
+                'location'     => $loc,               // inherited from provider (VPS)
+                'location_flag'=> strtolower($loc_flag),
                 'description'  => trim($_POST['description'] ?? ''),
                 'virt_plid'    => $ptype === 'vps' ? $plid : '',
                 'virt_serid'   => $ptype === 'vps' ? $ser  : '',
@@ -245,27 +258,11 @@ function h($v): string { return htmlspecialchars((string)$v); }
                 <label class="flabel">Sort Order</label>
                 <input type="number" name="sort_order" id="f_sort" value="0">
               </div>
-              <div>
-                <label class="flabel">Location <span class="fnote" id="locHint">(VPS: inherited from provider · Dedicated: enter manually)</span></label>
-                <input name="location" id="f_loc" placeholder="e.g. Mumbai, India" list="locList">
-                <datalist id="locList">
-                  <?php
-                    try {
-                      foreach (db()->query("SELECT DISTINCT location FROM vps_packages WHERE location<>'' ORDER BY location")->fetchAll(PDO::FETCH_COLUMN) as $L)
-                        echo '<option value="'.h($L).'">';
-                    } catch (Throwable $e) {}
-                  ?>
-                </datalist>
-              </div>
-              <div>
-                <label class="flabel">Location Flag <span class="fnote">(2-letter country code)</span></label>
-                <input name="location_flag" id="f_locflag" placeholder="e.g. in, us, sg, de" maxlength="2" style="text-transform:lowercase">
-              </div>
             </div>
 
-            <!-- Virtualizor mapping (VPS only) -->
+            <!-- Virtualizor mapping (VPS only). Node + Location come from the provider. -->
             <div id="virtBlock" style="margin-top:16px">
-              <label class="flabel" style="margin-bottom:8px;display:block">Virtualizor Mapping <span class="fnote">(VPS only)</span></label>
+              <label class="flabel" style="margin-bottom:8px;display:block">Virtualizor Mapping <span class="fnote">(VPS only — node &amp; location are set on the provider)</span></label>
               <div class="pkg-form-grid">
                 <div>
                   <label class="fnote">Provider</label>
@@ -280,10 +277,6 @@ function h($v): string { return htmlspecialchars((string)$v); }
                 <div>
                   <label class="fnote">Plan</label>
                   <select name="virt_plid" id="f_plan" disabled onchange="applyPlan()"><option value="">Load provider first…</option></select>
-                </div>
-                <div>
-                  <label class="fnote">Node / Location</label>
-                  <select name="virt_serid" id="f_node" disabled><option value="">Load provider first…</option></select>
                 </div>
                 <div>
                   <label class="fnote">Default OS Template</label>
@@ -395,21 +388,17 @@ var BASEP = '<?= BASE_URL ?>/admin/vps-packages.php';
 function loadCatalog(cb) {
   var pid = document.getElementById('f_provider').value;
   var note = document.getElementById('loadNote');
-  ['f_plan','f_node','f_os'].forEach(function(id){ document.getElementById(id).disabled = true; });
+  ['f_plan','f_os'].forEach(function(id){ document.getElementById(id).disabled = true; });
   if (!pid) { note.textContent = ''; return; }
-  note.textContent = 'Loading plans / nodes / OS from Virtualizor…';
+  note.textContent = 'Loading plans / OS from Virtualizor…';
   fetch(BASEP + '?ajax=load&provider_id=' + encodeURIComponent(pid))
     .then(function(r){ return r.json(); })
     .then(function(d){
       if (!d.ok) { note.innerHTML = '<span style="color:var(--danger)">'+ (d.error||'Failed to load') +'</span>'; return; }
       CATALOG = d;
       fillSelect('f_plan', d.plans, function(p){ return [p.slug, (p.label||p.name||('Plan '+p.slug)) + ' — ' + (p.vcpu||'?') + 'C/' + (p.ram_gb||'?') + 'G/' + (p.disk_gb||'?') + 'G']; });
-      fillSelect('f_node', d.nodes, function(n){ return [n.slug, (n.label||n.name||('Node '+n.slug))]; });
       fillSelect('f_os',   d.os,    function(o){ return [o.slug, (o.name||o.label||o.slug)]; });
-      ['f_plan','f_node','f_os'].forEach(function(id){ document.getElementById(id).disabled = false; });
-      // Location is inherited from the provider — auto-fill it.
-      if (d.provider_location)      document.getElementById('f_loc').value = d.provider_location;
-      if (d.provider_location_flag) document.getElementById('f_locflag').value = d.provider_location_flag;
+      ['f_plan','f_os'].forEach(function(id){ document.getElementById(id).disabled = false; });
       var col = d.plans.length ? 'var(--success)' : 'var(--warn)';
       note.innerHTML = '<span style="color:'+col+'">Loaded '+ d.plans.length +' plans, '+ d.nodes.length +' nodes, '+ d.os.length +' OS.</span>';
       if (!d.plans.length && d.plans_debug) {
@@ -458,7 +447,7 @@ function setType(t) {
   document.getElementById('cpuLabelWrap').style.display = isDed ? '' : 'none';
   document.getElementById('specHint').textContent = isDed ? '(enter manually)' : '(auto-filled from plan, editable)';
   // Toggle "required" on Virtualizor selects so dedicated can submit
-  ['f_provider','f_plan','f_node','f_os'].forEach(function(id){
+  ['f_provider','f_plan','f_os'].forEach(function(id){
     var el = document.getElementById(id);
     if (isDed) el.removeAttribute('required'); else el.setAttribute('required','required');
   });
@@ -499,8 +488,6 @@ function editPkg(p) {
   document.getElementById('f_desc').value     = p.description || '';
   document.getElementById('f_os_label').value = p.os_label || '';
   document.getElementById('f_cpu').value      = p.cpu_label || '';
-  document.getElementById('f_loc').value      = p.location || '';
-  document.getElementById('f_locflag').value  = p.location_flag || '';
   document.getElementById('f_active').checked = p.is_active == 1;
 
   setType((p.ptype === 'dedicated') ? 'dedicated' : 'vps');
@@ -509,7 +496,6 @@ function editPkg(p) {
   if (p.ptype !== 'dedicated' && p.provider_id) {
     loadCatalog(function(){
       document.getElementById('f_plan').value = p.virt_plid;
-      document.getElementById('f_node').value = p.virt_serid;
       document.getElementById('f_os').value   = p.virt_osid;
     });
   }

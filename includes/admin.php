@@ -59,6 +59,7 @@ function save_provider(array $d, ?int $id=null): int {
              'is_active' => $d['is_active'] ?? 1, 'provider_type' => $ptype];
     if ($has_cols) { $cols['panel_url'] = $panel; $cols['api_pass'] = $pass; }
     if ($has_loc)  { $cols['location'] = $d['location'] ?? ''; $cols['location_flag'] = strtolower($d['location_flag'] ?? ''); }
+    if (_providers_has_col('default_serid')) { $cols['default_serid'] = $d['default_serid'] ?? ''; }
 
     if ($id) {
         $set = implode(',', array_map(fn($c) => "$c=?", array_keys($cols)));

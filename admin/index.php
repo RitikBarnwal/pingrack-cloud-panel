@@ -484,6 +484,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'api_pass'      => trim($_POST['api_pass'] ?? '') ?: ($prov['api_pass'] ?? ''),
                     'location'      => trim($_POST['location'] ?? ''),
                     'location_flag' => strtolower(trim($_POST['location_flag'] ?? '')),
+                    'default_serid' => trim($_POST['default_serid'] ?? ''),
                     'margin_pct'    => (float)($_POST['margin_pct'] ?? 0),
                     'currency_base' => strtoupper(trim($_POST['currency_base'] ?? 'EUR')),
                     'is_active'     => (int)($_POST['is_active'] ?? 1),
@@ -524,6 +525,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'api_pass'      => trim($_POST['api_pass'] ?? ''),
                     'location'      => trim($_POST['location'] ?? ''),
                     'location_flag' => strtolower(trim($_POST['location_flag'] ?? '')),
+                    'default_serid' => trim($_POST['default_serid'] ?? ''),
                     'margin_pct'    => (float)($_POST['margin_pct'] ?? 0),
                     'currency_base' => strtoupper(trim($_POST['currency_base'] ?? 'EUR')),
                     'is_active'     => (int)($_POST['is_active'] ?? 1),
@@ -3318,6 +3320,13 @@ if ($sel_tid) {
           <div><label class="flabel">Server Location</label><input name="location" id="epp_loc" class="form-control" placeholder="e.g. Mumbai, India"></div>
           <div><label class="flabel">Location Flag <span style="font-weight:400;color:#94a3b8">(2-letter code)</span></label><input name="location_flag" id="epp_locflag" class="form-control" placeholder="in, us, sg, de" maxlength="2" style="text-transform:lowercase"></div>
         </div>
+        <div class="form-row" id="epp_node_wrap">
+          <div>
+            <label class="flabel">Node / Server <span style="font-weight:400;color:#94a3b8">(Virtualizor serid)</span></label>
+            <select name="default_serid" id="epp_node" class="form-control"><option value="">—</option></select>
+            <div class="fnote" id="epp_node_note"></div>
+          </div>
+        </div>
         <div class="form-row full">
           <div>
             <label class="flabel">API Key</label>
@@ -3389,6 +3398,12 @@ if ($sel_tid) {
         <div class="form-row">
           <div><label class="flabel">Server Location</label><input name="location" id="app_loc" class="form-control" placeholder="e.g. Mumbai, India"></div>
           <div><label class="flabel">Location Flag <span style="font-weight:400;color:#94a3b8">(2-letter code)</span></label><input name="location_flag" id="app_locflag" class="form-control" placeholder="in, us, sg, de" maxlength="2" style="text-transform:lowercase"></div>
+        </div>
+        <div class="form-row" id="app_node_wrap">
+          <div>
+            <label class="flabel">Node / Server <span style="font-weight:400;color:#94a3b8">(Virtualizor serid — set after saving)</span></label>
+            <input name="default_serid" id="app_node" class="form-control" placeholder="Save first, then Edit to pick the node from a list">
+          </div>
         </div>
         <div class="form-row full">
           <div>
@@ -3644,6 +3659,32 @@ function openEditProv(prov) {
   document.getElementById('epp_pass').value  = apiPass;
   document.getElementById('epp_loc').value     = prov.location || '';
   document.getElementById('epp_locflag').value = prov.location_flag || '';
+
+  // Load Virtualizor nodes for this saved provider so admin can pick the serid.
+  (function(){
+    var sel = document.getElementById('epp_node');
+    var note = document.getElementById('epp_node_note');
+    var wrap = document.getElementById('epp_node_wrap');
+    var saved = prov.default_serid || '';
+    if ((prov.provider_type || 'virtualizor') === 'proxmox') { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    sel.innerHTML = '<option value="'+saved+'">'+(saved ? 'Current: '+saved : '—')+'</option>';
+    note.textContent = 'Loading nodes…';
+    fetch('<?= BASE_URL ?>/admin/vps-packages.php?ajax=load&provider_id=' + prov.id)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d.ok || !d.nodes || !d.nodes.length) { note.innerHTML = '<span style="color:#dc2626">'+((d && d.error) || 'Could not load nodes')+'</span>'; return; }
+        sel.innerHTML = '<option value="">— Select node —</option>';
+        d.nodes.forEach(function(n){
+          var o = document.createElement('option');
+          o.value = n.slug; o.textContent = (n.label || n.slug) + ' (serid ' + n.slug + ')';
+          if (String(n.slug) === String(saved)) o.selected = true;
+          sel.appendChild(o);
+        });
+        note.textContent = d.nodes.length + ' node(s) loaded.';
+      })
+      .catch(function(){ note.innerHTML = '<span style="color:#dc2626">Network error loading nodes.</span>'; });
+  })();
   // Virtualizor uses panel/key/pass columns; Proxmox uses a JSON blob in api_key
   document.getElementById('epp_virt_fields').style.display = (prov.provider_type === 'proxmox') ? 'none' : '';
   document.getElementById('epp_cur').value   = prov.currency_base || 'EUR';
