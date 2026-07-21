@@ -41,8 +41,10 @@ class VirtualizorClient
         //   Enduser API — port 4083 (HTTPS) / 4082 (HTTP) — for per-VPS enduser ops (ostemplate/rebuild, etc.)
         // We build both base URLs and pick the right one per call.
         $is_https = str_starts_with($this->panelUrl, 'https');
-        $this->base          = $this->panelUrl . ':' . ($is_https ? 4083 : 4082) . '/index.php'; // Admin API
-        $this->enduser_base  = $this->panelUrl . ':' . ($is_https ? 4083 : 4082) . '/index.php'; // Enduser API
+        // Admin API   → 4085 (HTTPS) / 4084 (HTTP)   — plans, servers, vs, addvs …
+        // Enduser API → 4083 (HTTPS) / 4082 (HTTP)   — ostemplate, power, rescue …
+        $this->base          = $this->panelUrl . ':' . ($is_https ? 4085 : 4084) . '/index.php';
+        $this->enduser_base  = $this->panelUrl . ':' . ($is_https ? 4083 : 4082) . '/index.php';
     }
 
     // Acts that must go through the Enduser API (port 4083/4082)

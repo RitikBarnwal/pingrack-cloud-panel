@@ -32,21 +32,27 @@ class VirtualizorCatalog
 
     public function regions(): array
     {
-        $raw  = $this->http->get('listservers');
-        $list = [];
+        // Admin API: act=servers → { servers: { serid: { serid, server_name, location, ip, virt } } }
+        $raw  = $this->http->get('servers');
+        $rows = $raw['servers'] ?? $raw['servs'] ?? $raw['serverlist'] ?? [];
+        if (empty($rows)) {
+            try { $r2 = $this->http->get('listservers'); $rows = $r2['servers'] ?? $r2['servs'] ?? $r2['serverlist'] ?? []; }
+            catch (Throwable $e) {}
+        }
 
-        foreach ($raw['servers'] ?? $raw['serverlist'] ?? [] as $id => $s) {
-            $name = $s['server_name'] ?? $s['name'] ?? 'Server ' . $id;
-            $city = $s['city']        ?? $s['location'] ?? $name;
-            $cc   = strtolower($s['country_code'] ?? $s['country'] ?? 'in');
+        $list = [];
+        foreach ($rows as $id => $s) {
+            if (!is_array($s)) continue;
+            $name = $s['server_name'] ?? $s['name'] ?? 'Node ' . $id;
+            // Virtualizor `location` is free text and often empty; keep it if present.
+            $loc  = trim((string)($s['location'] ?? $s['city'] ?? ''));
 
             $list[] = [
                 'slug'         => (string)($s['serid'] ?? $id),
                 'label'        => $name,
-                'city'         => $city,
-                'country'      => $this->countryName($cc),
-                'country_code' => $cc,
-                'country_flag' => $cc,
+                'city'         => $loc !== '' ? $loc : $name,
+                'location'     => $loc,
+                'ip'           => $s['ip'] ?? '',
             ];
         }
         return $list;
@@ -65,14 +71,18 @@ class VirtualizorCatalog
         // Fetch ostemplate list — requires a VPS ID (any active VPS on this panel)
         // If vpsId not provided, try to get one from listservers
         if ($vpsId <= 0) {
-            try {
-                $sv = $this->http->get('listvs');
-                $vsList = $sv['vs'] ?? $sv['vpslist'] ?? [];
-                if (!empty($vsList)) {
-                    $first = reset($vsList);
-                    $vpsId = (int)($first['vpsid'] ?? $first['id'] ?? 0);
-                }
-            } catch (Throwable $e) {}
+            // Admin API: act=vs → { vs: { vpsid: {...} } }  (fallback: listvs)
+            foreach (['vs', 'listvs'] as $act) {
+                try {
+                    $sv = $this->http->get($act);
+                    $vsList = $sv['vs'] ?? $sv['vpslist'] ?? [];
+                    if (!empty($vsList)) {
+                        $first = reset($vsList);
+                        $vpsId = (int)($first['vpsid'] ?? $first['id'] ?? 0);
+                        if ($vpsId > 0) break;
+                    }
+                } catch (Throwable $e) {}
+            }
         }
 
         if ($vpsId <= 0) return $list; // Can't fetch without a VPS ID
@@ -127,13 +137,20 @@ class VirtualizorCatalog
         $list = [];
         foreach ($rows as $id => $p) {
             if (!is_array($p)) continue;
+            // Per Virtualizor docs: plid, plan_name, ram (MB), cores, space (GB), bandwidth
             $planid = (string)($p['plid'] ?? $p['id'] ?? $id);
             $name   = $p['plan_name']  ?? $p['name'] ?? 'Plan ' . $planid;
-            $ram_mb = (int)($p['ram']  ?? 0);
-            $disk_mb= (int)($p['disk_space'] ?? $p['disk'] ?? 0);
-            $vcpu   = (int)($p['num_cores']  ?? $p['cores'] ?? $p['cpu'] ?? 1);
-            $ram_gb = $ram_mb  ? round($ram_mb  / 1024, 1) : 0;
-            $disk_gb= $disk_mb ? (int)round($disk_mb / 1024) : 0;
+            $ram_mb = (int)($p['ram']  ?? 0);                                  // RAM in MB
+            $vcpu   = (int)($p['cores'] ?? $p['num_cores'] ?? $p['cpu'] ?? 1); // CPU cores
+            // `space` is in GB; fall back to legacy disk_space/disk (MB) if present
+            if (isset($p['space'])) {
+                $disk_gb = (int)round((float)$p['space']);
+                $disk_mb = $disk_gb * 1024;
+            } else {
+                $disk_mb = (int)($p['disk_space'] ?? $p['disk'] ?? 0);
+                $disk_gb = $disk_mb ? (int)round($disk_mb / 1024) : 0;
+            }
+            $ram_gb = $ram_mb ? round($ram_mb / 1024, 1) : 0;
 
             // Virtualizor pricing may be INR or USD — depends on admin config
             // Store as base price, admin sets margin separately
