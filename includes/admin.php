@@ -21,18 +21,54 @@ function get_provider(int $id): ?array {
     $s = db()->prepare('SELECT * FROM providers WHERE id=? LIMIT 1');
     $s->execute([$id]); return $s->fetch() ?: null;
 }
+/** True if a column exists on the providers table (cached). */
+function _providers_has_col(string $col): bool {
+    static $cols = null;
+    if ($cols === null) {
+        $cols = [];
+        try {
+            foreach (db()->query("SHOW COLUMNS FROM providers")->fetchAll(PDO::FETCH_COLUMN) as $c) {
+                $cols[strtolower($c)] = true;
+            }
+        } catch (Throwable $e) {}
+    }
+    return isset($cols[strtolower($col)]);
+}
+
 function save_provider(array $d, ?int $id=null): int {
-    // Virtualizor creds now live in real columns (panel_url/api_key/api_pass).
-    // Proxmox keeps its 4-field JSON in api_key. Both are passed through here.
-    $panel = $d['panel_url'] ?? '';
-    $pass  = $d['api_pass']  ?? '';
+    // Virtualizor creds live in real columns (panel_url/api_key/api_pass) when
+    // those columns exist; otherwise we gracefully store JSON in api_key so the
+    // panel keeps working even before install-db.php adds the columns.
+    $has_cols = _providers_has_col('panel_url') && _providers_has_col('api_pass');
+
+    $api_key = $d['api_key'] ?? '';
+    $panel   = $d['panel_url'] ?? '';
+    $pass    = $d['api_pass']  ?? '';
+    $ptype   = $d['provider_type'] ?? 'virtualizor';
+
+    // Fallback path: columns missing → pack Virtualizor creds into api_key JSON.
+    if (!$has_cols && $ptype === 'virtualizor' && ($panel !== '' || $pass !== '')) {
+        $api_key = json_encode(['panel_url' => $panel, 'api_key' => $api_key, 'api_pass' => $pass]);
+    }
+
     if ($id) {
-        db()->prepare('UPDATE providers SET display_name=?,api_key=?,panel_url=?,api_pass=?,margin_pct=?,is_active=?,currency_base=?,provider_type=? WHERE id=?')
-           ->execute([$d['display_name'],$d['api_key'],$panel,$pass,$d['margin_pct'],$d['is_active']??1,strtoupper($d['currency_base']??'EUR'),$d['provider_type']??'virtualizor',$id]);
+        if ($has_cols) {
+            db()->prepare('UPDATE providers SET display_name=?,api_key=?,panel_url=?,api_pass=?,margin_pct=?,is_active=?,currency_base=?,provider_type=? WHERE id=?')
+               ->execute([$d['display_name'],$api_key,$panel,$pass,$d['margin_pct'],$d['is_active']??1,strtoupper($d['currency_base']??'EUR'),$ptype,$id]);
+        } else {
+            db()->prepare('UPDATE providers SET display_name=?,api_key=?,margin_pct=?,is_active=?,currency_base=?,provider_type=? WHERE id=?')
+               ->execute([$d['display_name'],$api_key,$d['margin_pct'],$d['is_active']??1,strtoupper($d['currency_base']??'EUR'),$ptype,$id]);
+        }
         return $id;
     }
-    db()->prepare('INSERT INTO providers (slug,display_name,api_key,panel_url,api_pass,margin_pct,currency_base,is_active,provider_type) VALUES(?,?,?,?,?,?,?,?,?)')
-       ->execute([$d['slug'],$d['display_name'],$d['api_key'],$panel,$pass,$d['margin_pct']??0,strtoupper($d['currency_base']??'EUR'),$d['is_active']??1,$d['provider_type']??'virtualizor']);
+
+    if ($has_cols) {
+        db()->prepare('INSERT INTO providers (slug,display_name,api_key,panel_url,api_pass,margin_pct,currency_base,is_active,provider_type) VALUES(?,?,?,?,?,?,?,?,?)')
+           ->execute([$d['slug'],$d['display_name'],$api_key,$panel,$pass,$d['margin_pct']??0,strtoupper($d['currency_base']??'EUR'),$d['is_active']??1,$ptype]);
+    } else {
+        db()->prepare('INSERT INTO providers (slug,display_name,api_key,margin_pct,currency_base,is_active,provider_type) VALUES(?,?,?,?,?,?,?)')
+           ->execute([$d['slug'],$d['display_name'],$api_key,$d['margin_pct']??0,strtoupper($d['currency_base']??'EUR'),$d['is_active']??1,$ptype]);
+    }
     return (int)db()->lastInsertId();
 }
 function mark_provider_synced(int $id, bool $ok, string $note=''): void {
