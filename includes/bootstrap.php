@@ -132,5 +132,5 @@ function inject_global_head(): void {
 
 function user_currency_symbol(string $currency): string
 {
-    return $currency === 'INR' ? '₹' : '$';
+    return '₹'; // INR-only platform
 }

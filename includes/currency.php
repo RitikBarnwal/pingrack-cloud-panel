@@ -215,38 +215,24 @@ function compute_price(float $base_price, string $base_currency, float $margin_p
  *
  * Uses DB-cached rates (no live API call on every page load).
  */
-function price_for_user(float $price_usd, string $user_currency): float
+function price_for_user(float $price, string $user_currency = 'INR'): float
 {
-    $user_currency = strtoupper($user_currency);
-    if ($user_currency === 'USD') return round($price_usd, 6);
-    if ($user_currency === 'INR') {
-        $rate = get_rate('USD', 'INR');
-        return round($price_usd * $rate, 4);
-    }
-    // Other currencies — convert USD→target
-    $rate = get_rate('USD', $user_currency);
-    return round($price_usd * $rate, 4);
+    // INR-only: prices are already stored in INR, no conversion.
+    return round($price, 4);
 }
 
 /**
- * Format price with currency symbol for display.
+ * Format price with the ₹ symbol for display (INR-only).
  */
-function fmt_user_price(float $price_usd, string $user_currency, bool $monthly = false): string
+function fmt_user_price(float $price, string $user_currency = 'INR', bool $monthly = false): string
 {
-    $amount = price_for_user($price_usd * ($monthly ? 730 : 1), $user_currency);
-    $sym    = currency_symbol($user_currency);
-    $dp     = $user_currency === 'INR' ? 2 : ($monthly ? 2 : 4);
-    return $sym . number_format($amount, $dp);
+    $amount = round($price * ($monthly ? 730 : 1), 2);
+    return '₹' . number_format($amount, 2);
 }
 
 function currency_symbol(string $currency): string
 {
-    return match(strtoupper($currency)) {
-        'INR'   => '₹',
-        'EUR'   => '€',
-        'GBP'   => '£',
-        default => '$',
-    };
+    return '₹'; // INR-only platform
 }
 
 /* ── Get cached rates summary (for admin display) ─────────────*/

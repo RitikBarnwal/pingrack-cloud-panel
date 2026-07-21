@@ -548,14 +548,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tab = 'providers';
         }
 
-        // ── Refresh exchange rates ────────────────────────────
-        if ($action === 'refresh_rates') {
-            $res = refresh_all_rates();
-            $ok  = count(array_filter($res, fn($r)=>$r['ok']));
-            $msg = "Rates refreshed: {$ok}/".count($res)." updated.";
-            $tab = 'providers';
-        }
-
         // ── ADD plan ─────────────────────────────────────────
         if ($action === 'add_plan') {
             $pid          = (int)($_POST['provider_id'] ?? 0);
@@ -651,7 +643,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $stats     = admin_stats();
 $providers = get_all_providers();
-$rates     = get_cached_rates_summary();
 
 // ── Referral data ──────────────────────────────────────────
 $ref_settings = [
@@ -959,31 +950,7 @@ try {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Provider
           </button>
-          <form method="POST" style="margin:0">
-            <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-            <input type="hidden" name="action" value="refresh_rates">
-            <button type="submit" class="btn btn-ghost btn-sm">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-              Refresh Rates
-            </button>
-          </form>
         </div>
-      </div>
-
-      <!-- Rate cards -->
-      <div class="rate-grid">
-        <?php foreach ($rates as $r): ?>
-        <div class="rate-card">
-          <div class="rate-pair"><?= $r['from'] ?> → <?= $r['to'] ?></div>
-          <div class="rate-val"><?= $r['rate'] ? number_format($r['rate'],4) : '<span style="color:var(--gray-300)">—</span>' ?></div>
-          <div class="rate-meta">
-            <span class="rdot" style="background:<?= $r['fresh']?'#16a34a':($r['rate']?'#d97706':'#9ca3af') ?>"></span>
-            <?php if ($r['rate']): ?>
-            <?= $r['fresh']?'Fresh':'Stale ('.$r['age_min'].'min)' ?> · <?= $r['cached_at'] ?>
-            <?php else: ?>Not fetched<?php endif; ?>
-          </div>
-        </div>
-        <?php endforeach; ?>
       </div>
 
       <div class="prov-grid">
@@ -1060,21 +1027,6 @@ try {
           </div>
           <div class="sync-log" id="sync-log-<?= $prov['id'] ?>"></div>
           <div class="prov-footer">
-            <?php if ($ptype === 'hetzner'): ?>
-            <!-- Hetzner: manual plans so Fetch Regions first, then Sync -->
-            <button class="btn btn-ghost btn-sm" id="fetch-reg-btn-<?= $prov['id'] ?>"
-                    onclick="fetchRegions(<?= $prov['id'] ?>, this)"
-                    title="Fetch all regions & OS images from provider API">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              Fetch Regions
-            </button>
-            <?php endif; ?>
-
-            <button class="sync-btn" id="sync-btn-<?= $prov['id'] ?>" onclick="doSync(<?= $prov['id'] ?>,this)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-              <?= $ptype === 'hetzner' ? 'Sync Plans' : 'Sync All' ?>
-            </button>
-            <span class="sync-st" id="sync-st-<?= $prov['id'] ?>"><?= $prov['last_synced'] ? date('d M, H:i',strtotime($prov['last_synced'])) : '' ?></span>
             <div style="margin-left:auto">
               <button class="btn btn-ghost btn-sm" onclick="openEditProv(<?= htmlspecialchars(json_encode($prov)) ?>)">Edit</button>
             </div>
@@ -3519,78 +3471,6 @@ var CSRF = '<?= $csrf ?>';
 var BASE = '<?= BASE_URL ?>';
 
 /* ── Fetch Regions (run before adding plans) ───────────────── */
-function fetchRegions(pid, btn) {
-  btn.disabled = true;
-  var origText = btn.innerHTML;
-  btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin .8s linear infinite"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.86"/></svg> Fetching…';
-
-  var log = document.getElementById('sync-log-'+pid);
-  log.innerHTML = '<div class="ll">Fetching regions from provider API...</div>';
-  log.classList.add('open');
-
-  fetch(BASE+'/providers/hetzner/fetch-regions.php', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({provider_id:pid, csrf_token:CSRF})
-  })
-  .then(r=>r.json()).then(d=>{
-    btn.disabled = false;
-    btn.innerHTML = origText;
-
-    if (d.ok) {
-      log.innerHTML = '<div class="ll ok">✓ '+esc(d.message)+'</div>';
-
-      // Show region list in log
-      if (d.regions && d.regions.length) {
-        log.innerHTML += '<div class="ll" style="color:#58a6ff;margin-top:4px">Regions saved:</div>';
-        d.regions.forEach(function(r) {
-          log.innerHTML += '<div class="ll ok">  '+esc(r.slug)+' — '+esc(r.city)+', '+esc(r.country)+'</div>';
-        });
-      }
-
-      log.innerHTML += '<div class="ll warn" style="margin-top:6px">Now go to Server Plans tab → Add Plan → locations will appear.</div>';
-      log.scrollTop = log.scrollHeight;
-
-      // Reload after 4s so Plans tab shows the new regions
-      setTimeout(()=>location.reload(), 4000);
-    } else {
-      log.innerHTML = '<div class="ll err">✗ '+esc(d.error||'Failed')+'</div>';
-    }
-  }).catch(function(e){
-    btn.disabled = false;
-    btn.innerHTML = origText;
-    log.innerHTML = '<div class="ll err">✗ Request failed: '+esc(e.message||'unknown')+'</div>';
-  });
-}
-
-/* ── Sync provider ─────────────────────────────────────────── */
-function doSync(pid, btn) {
-  btn.disabled = true;
-  btn.classList.add('spinning');
-  var st  = document.getElementById('sync-st-'+pid);
-  var log = document.getElementById('sync-log-'+pid);
-  st.textContent = 'Syncing…'; st.className = 'sync-st';
-  log.innerHTML  = ''; log.classList.add('open');
-
-  fetch(BASE+'/api/sync-provider.php', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({provider_id:pid, csrf_token:CSRF})
-  })
-  .then(r=>r.json()).then(d=>{
-    btn.disabled = false; btn.classList.remove('spinning');
-    if (d.log) {
-      log.innerHTML = d.log.map(l=>{
-        var c = l.startsWith('✓')?'ok':l.startsWith('✗')?'err':l.startsWith('⚠')?'warn':'';
-        return '<div class="ll '+c+'">'+esc(l)+'</div>';
-      }).join('');
-      if (d.samples) log.innerHTML += '<div class="ll" style="color:#58a6ff;margin-top:5px">Prices:</div>'+d.samples.map(s=>'<div class="ll ok">  '+esc(s)+'</div>').join('');
-      log.scrollTop = log.scrollHeight;
-    }
-    st.textContent = d.ok ? '✓ '+(d.summary||'Done') : '✗ '+(d.error||'Failed');
-    st.className   = 'sync-st '+(d.ok?'ok':'err');
-    if (d.ok) setTimeout(()=>location.reload(), 3500);
-  }).catch(()=>{ btn.disabled=false; btn.classList.remove('spinning'); st.textContent='✗ Request failed'; st.className='sync-st err'; });
-}
-
 /* ── Location checkboxes builder ────────────────────────────── */
 function buildLocChecks(containerId, regions, selectedLocs, nameAttr) {
   var c = document.getElementById(containerId);

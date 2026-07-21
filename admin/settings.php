@@ -642,10 +642,8 @@ document.querySelectorAll('.form-control').forEach(input => {
           <div class="card-body">
             <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">Add these to your server crontab (cPanel → Cron Jobs):</p>
             <pre style="background:#0d1117;color:#3fb950;padding:14px;border-radius:9px;font-size:12.5px;overflow-x:auto;line-height:1.9"><?php
-echo "# Hourly billing deduction\n";
+echo "# Prepaid expiry + suspend lifecycle\n";
 echo "0 * * * * /usr/local/bin/php /home/cloudgreat/public_html/cron/billing.php >> /var/log/cv_billing.log 2>&amp;1\n\n";
-echo "# Currency rate refresh (every 3 hours)\n";
-echo "0 */3 * * * /usr/local/bin/php /home/cloudgreat/public_html/cron/currency_refresh.php >> /var/log/cv_currency.log 2>&amp;1\n\n";
 echo "# Server status poller (every minute)\n";
 echo "* * * * * /usr/local/bin/php /home/cloudgreat/public_html/cron/server-status.php >> /var/log/cv_status.log 2>&amp;1\n\n";
 echo "# Every minute | WhatsaApp Api\n";
