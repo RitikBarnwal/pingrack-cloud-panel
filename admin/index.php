@@ -490,6 +490,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tab = 'providers';
         }
 
+        // ── Add a NEW provider ───────────────────────────────
+        if ($action === 'add_provider') {
+            $ptype = strtolower(trim($_POST['provider_type'] ?? ''));
+            $name  = trim($_POST['display_name'] ?? '');
+            $key   = trim($_POST['api_key'] ?? '');
+
+            if ($name === '' || $ptype === '') {
+                $err = 'Display name and provider type are required.';
+            } elseif (!in_array($ptype, $available_types)) {
+                $err = "Unknown provider type '{$ptype}'. Add its folder under /providers first.";
+            } else {
+                // Build a unique slug from name (fallback to type)
+                $base_slug = preg_replace('/[^a-z0-9]+/', '-', strtolower($name)) ?: $ptype;
+                $base_slug = trim($base_slug, '-');
+                $slug = $base_slug;
+                $exists = db()->prepare('SELECT COUNT(*) FROM providers WHERE slug=?');
+                $i = 1;
+                while (true) {
+                    $exists->execute([$slug]);
+                    if (!(int)$exists->fetchColumn()) break;
+                    $slug = $base_slug . '-' . (++$i);
+                }
+                save_provider([
+                    'slug'          => $slug,
+                    'display_name'  => $name,
+                    'api_key'       => $key,
+                    'margin_pct'    => (float)($_POST['margin_pct'] ?? 0),
+                    'currency_base' => strtoupper(trim($_POST['currency_base'] ?? 'EUR')),
+                    'is_active'     => (int)($_POST['is_active'] ?? 1),
+                    'provider_type' => $ptype,
+                ]);
+                $msg = 'Provider "' . htmlspecialchars($name) . '" added.';
+            }
+            $tab = 'providers';
+        }
+
         // ── Save margin only ─────────────────────────────────
         if ($action === 'save_margin') {
             $pid    = (int)($_POST['provider_id'] ?? 0);
@@ -907,15 +943,21 @@ try {
       <!-- ═══════ PROVIDERS ═══════ -->
 
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
-        <div style="font-size:13px;color:var(--gray-500)">Provider folders found: <strong><?= implode(', ', $available_types) ?: 'none' ?></strong></div>
-        <form method="POST">
-          <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-          <input type="hidden" name="action" value="refresh_rates">
-          <button type="submit" class="btn btn-ghost btn-sm">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-            Refresh Rates
+        <div style="font-size:13px;color:var(--gray-500)">Provider types available: <strong><?= implode(', ', $available_types) ?: 'none' ?></strong></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button type="button" class="btn btn-primary btn-sm" onclick="openAddProv()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Provider
           </button>
-        </form>
+          <form method="POST" style="margin:0">
+            <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+            <input type="hidden" name="action" value="refresh_rates">
+            <button type="submit" class="btn btn-ghost btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+              Refresh Rates
+            </button>
+          </form>
+        </div>
       </div>
 
       <!-- Rate cards -->
@@ -3290,6 +3332,65 @@ if ($sel_tid) {
   </div>
 </div>
 
+<!-- ═══ ADD PROVIDER MODAL ═══════════════════════════════════ -->
+<div id="add-prov-modal" style="display:none" class="modal-bd">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title">Add Provider</div>
+      <button onclick="this.closest('.modal-bd').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--gray-400)">×</button>
+    </div>
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+      <input type="hidden" name="action" value="add_provider">
+      <div class="modal-body">
+        <div class="form-row">
+          <div>
+            <label class="flabel">Provider Type</label>
+            <select name="provider_type" id="app_type" class="form-control" required onchange="appUpdateHint()">
+              <option value="">Select type…</option>
+              <?php foreach ($available_types as $t): ?>
+              <option value="<?= htmlspecialchars($t) ?>"><?= htmlspecialchars(ucfirst($t)) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div>
+            <label class="flabel">Base Currency</label>
+            <select name="currency_base" id="app_cur" class="form-control">
+              <option value="EUR">EUR — Euro</option>
+              <option value="USD">USD — US Dollar</option>
+              <option value="INR">INR — Indian Rupee</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row full">
+          <div><label class="flabel">Display Name</label><input name="display_name" id="app_name" class="form-control" placeholder="e.g. My Virtualizor Cloud" required></div>
+        </div>
+        <div class="form-row full">
+          <div>
+            <label class="flabel">API Key / Credentials</label>
+            <textarea name="api_key" id="app_key" class="form-control" placeholder="Paste API key or JSON credentials" style="font-family:monospace" rows="5"></textarea>
+            <div id="app_key_hint" style="display:none;margin-top:6px;padding:8px 10px;background:#0d1117;border-radius:6px;font-family:monospace;font-size:11px;color:#3fb950;white-space:pre;line-height:1.6"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="flabel">Margin %</label>
+            <input type="number" step="0.1" name="margin_pct" id="app_margin" class="form-control" value="0">
+          </div>
+          <div>
+            <label class="flabel">Active</label>
+            <select name="is_active" id="app_active" class="form-control"><option value="1">Yes</option><option value="0">No</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="this.closest('.modal-bd').style.display='none'">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Provider</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ═══ EDIT USER MODAL ══════════════════════════════════════ -->
 <div id="edit-user-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:200;align-items:center;justify-content:center;padding:20px">
   <div style="background:white;border-radius:16px;width:100%;max-width:500px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.2)">
@@ -3518,6 +3619,40 @@ function openEditProv(prov) {
   }
 
   document.getElementById('edit-prov-modal').style.display = 'flex';
+}
+
+/* ── Add provider modal ───────────────────────────────────── */
+var PROV_CRED_HINTS = {
+  'contabo': '// Contabo — paste this JSON (fill in your values):\n{\n  "client_id":     "your-client-id",\n  "client_secret": "your-client-secret",\n  "api_user":      "your@email.com",\n  "api_password":  "your-contabo-password"\n}',
+  'virtualizor': '// Virtualizor — paste this JSON (fill in your values):\n{\n  "panel_url": "https://your-virtualizor-panel.com",\n  "api_key":   "your-api-key",\n  "api_pass":  "your-api-pass"\n}\n// Get API Key: Virtualizor Admin → Configuration → API',
+  'proxmox': '// Proxmox VE — paste this JSON (fill in your values):\n{\n  "host":         "https://your-proxmox-ip:8006",\n  "token_id":     "root@pam!mytoken",\n  "token_secret": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",\n  "node":         "pve",\n  "verify_ssl":   false\n}\n// Create token: Proxmox → Datacenter → API Tokens → Add',
+  'hetzner': '// Hetzner Cloud — paste your API token (single line).\n// Get it: Hetzner Console → Security → API Tokens → Generate.',
+  'digitalocean': '// DigitalOcean — paste your Personal Access Token (single line).\n// Get it: DO → API → Tokens → Generate New Token.',
+  'vultr': '// Vultr — paste your API key (single line).\n// Get it: Vultr → Account → API.',
+  'linode': '// Linode — paste your Personal Access Token (single line).\n// Get it: Linode → API Tokens → Create.'
+};
+function openAddProv() {
+  document.getElementById('app_type').value   = '';
+  document.getElementById('app_name').value   = '';
+  document.getElementById('app_key').value    = '';
+  document.getElementById('app_cur').value    = 'EUR';
+  document.getElementById('app_margin').value = '0';
+  document.getElementById('app_active').value = '1';
+  appUpdateHint();
+  document.getElementById('add-prov-modal').style.display = 'flex';
+}
+function appUpdateHint() {
+  var ptype = (document.getElementById('app_type').value || '').toLowerCase();
+  var hint  = document.getElementById('app_key_hint');
+  // Default base currency guess per type
+  var curGuess = {virtualizor:'INR', digitalocean:'USD', vultr:'USD', linode:'USD', hetzner:'EUR', contabo:'EUR', proxmox:'INR'};
+  if (curGuess[ptype]) document.getElementById('app_cur').value = curGuess[ptype];
+  if (PROV_CRED_HINTS[ptype]) {
+    hint.textContent = PROV_CRED_HINTS[ptype];
+    hint.style.display = 'block';
+  } else {
+    hint.style.display = 'none';
+  }
 }
 
 /* ── Credit modal ─────────────────────────────────────────── */
