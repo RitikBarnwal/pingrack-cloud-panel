@@ -1284,7 +1284,7 @@ try {
         $orders    = $orders_st->fetchAll() ?: [];
         $tokens_st = db()->query("SELECT ct.*, u.full_name, u.username FROM server_claim_tokens ct LEFT JOIN users u ON u.id=ct.user_id ORDER BY ct.created_at DESC LIMIT 50");
         $tokens    = $tokens_st->fetchAll() ?: [];
-        $providers_st = db()->query("SELECT id, display_name, provider_type FROM providers WHERE is_active=1 ORDER BY display_name");
+        $providers_st = db()->query("SELECT id, display_name, provider_type FROM providers WHERE is_active=1 AND provider_type IN ('virtualizor','proxmox') ORDER BY display_name");
         $admin_providers = $providers_st->fetchAll() ?: [];
         $admin_msg = $_SESSION['admin_msg'] ?? ''; unset($_SESSION['admin_msg']);
         $admin_err = $_SESSION['admin_err'] ?? ''; unset($_SESSION['admin_err']);

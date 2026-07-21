@@ -7,7 +7,7 @@ require_once __DIR__ . '/includes/email_otp.php';
 require_login();
 
 extract((function(){
-    $user=current_user();$currency=strtoupper($user['currency']??'USD');
+    $user=current_user();$currency=strtoupper($user['currency']?? 'INR');
     return['user'=>$user,'app_name'=>APP_NAME,'currency'=>$currency,'curr_sym'=>currency_symbol($currency),
     'avatar'=>strtoupper(mb_substr($user['full_name']?:$user['username'],0,1)),
     'fname'=>htmlspecialchars($user['account_type']==='organization'?($user['company_name']?:$user['username']):($user['full_name']?:$user['username'])),
@@ -286,7 +286,7 @@ $profile_pic_url = !empty($user['user_profile'])
             <div style="display:flex;gap:8px;margin-top:8px">
               <span class="badge badge-blue"><?= ucfirst($user['role']) ?></span>
               <span class="badge badge-green"><?= ucfirst($user['status']) ?></span>
-              <span class="badge" style="background:var(--gray-100);color:var(--gray-600)"><?= strtoupper($user['currency'] ?? 'USD') ?></span>
+              <span class="badge" style="background:var(--gray-100);color:var(--gray-600)"><?= strtoupper($user['currency'] ?? 'INR') ?></span>
               <span class="badge" style="background:var(--gray-100);color:var(--gray-600)">
                 <img src="https://flagcdn.com/w20/<?= strtolower($user['country'] ?? 'in') ?>.png" width="14" style="border-radius:2px" onerror="this.style.display='none'">
                 <?= strtoupper($user['country'] ?? 'IN') ?>
@@ -413,7 +413,7 @@ $profile_pic_url = !empty($user['user_profile'])
               </div>
               <div>
                 <label class="flabel">Currency <span>(set at signup)</span></label>
-                <input type="text" class="form-control" value="<?= strtoupper($user['currency'] ?? 'USD') ?>" disabled>
+                <input type="text" class="form-control" value="<?= strtoupper($user['currency'] ?? 'INR') ?>" disabled>
               </div>
             </div>
             <button type="submit" class="save-btn">Save Billing Info</button>

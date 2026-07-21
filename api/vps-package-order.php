@@ -36,8 +36,8 @@ $pkg = $pkg->fetch();
 if (!$pkg) { echo json_encode(['ok'=>false,'error'=>'Package not available']); exit; }
 
 $ptype    = ($pkg['ptype'] ?? 'vps') === 'dedicated' ? 'dedicated' : 'vps';
-$currency = strtoupper($user['currency'] ?? 'INR');
-$sym      = $currency === 'USD' ? '$' : '₹';
+$currency = 'INR';       // billing is INR-only
+$sym      = '₹';
 
 // ── Resolve the chosen billing cycle (must be enabled) ────────
 $cyc = db()->prepare("SELECT * FROM package_cycles WHERE package_id=? AND months=? AND is_enabled=1 LIMIT 1");
@@ -45,7 +45,7 @@ $cyc->execute([$package_id, $cycle_months]);
 $cyc = $cyc->fetch();
 if (!$cyc) { echo json_encode(['ok'=>false,'error'=>'Selected billing cycle is not available for this package.']); exit; }
 
-$price = $currency === 'USD' ? (float)$cyc['price_usd'] : (float)$cyc['price_inr'];
+$price = (float)$cyc['price_inr'];
 if ($price <= 0) { echo json_encode(['ok'=>false,'error'=>'This cycle has no price set. Contact support.']); exit; }
 
 // ── Server-limit gate (VPS only; dedicated is manual) ─────────

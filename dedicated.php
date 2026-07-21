@@ -9,8 +9,8 @@ require_login();
 
 $user     = current_user();
 $uid      = (int)$user['id'];
-$currency = strtoupper($user['currency'] ?? 'INR');
-$curr_sym = user_currency_symbol($currency);
+$currency = 'INR';        // billing is INR-only
+$curr_sym = '₹';
 $app_name = APP_NAME;
 $avatar   = strtoupper(mb_substr($user['full_name'] ?: $user['username'], 0, 1));
 $fname    = htmlspecialchars($user['account_type']==='organization'?($user['company_name']?:$user['username']):($user['full_name']?:$user['username']));

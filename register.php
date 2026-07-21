@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ? hash_password(bin2hex(random_bytes(24)))
                         : hash_password($password);
                     $ins = db()->prepare('INSERT INTO users (username,full_name,company_name,email,phone,password,account_type,role,apartments,city,state,pincode,country,currency,landmark,google_sub,github_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-                    $ins->execute([$username,$displayName,($accType==='organization'?$company:null),$email,$phone,$hash,$accType,'user',$_POST['apartments']??null,$_POST['city']??null,$_POST['state']??null,$_POST['pincode']??null,$_POST['country_code']??null,$_POST['currency']??'USD',$_POST['landmark']??null,($isGoogleSignup?$googleSub:null),($isGithubSignup?$githubId:null)]);
+                    $ins->execute([$username,$displayName,($accType==='organization'?$company:null),$email,$phone,$hash,$accType,'user',$_POST['apartments']??null,$_POST['city']??null,$_POST['state']??null,$_POST['pincode']??null,$_POST['country_code']??null,'INR',$_POST['landmark']??null,($isGoogleSignup?$googleSub:null),($isGithubSignup?$githubId:null)]);
                     if (!$isSocial) {
                         unset($_SESSION['otp_reg_'.md5($email)], $_SESSION['otp_verified_reg_'.md5($email)]);
                     }
@@ -700,7 +700,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
           </div>
           <div class="two-col">
             <div class="fi"><div class="fi-row"><label class="fi-lbl">Country</label></div><input class="fi-inp no-pad" type="text" id="reg-country" readonly><input type="hidden" name="country_code" id="reg-country-code"></div>
-            <div class="fi"><div class="fi-row"><label class="fi-lbl">Currency</label></div><input class="fi-inp no-pad" type="text" id="reg-currency" name="currency" readonly></div>
+            <div class="fi"><div class="fi-row"><label class="fi-lbl">Currency</label></div><input class="fi-inp no-pad" type="text" id="reg-currency" name="currency" value="INR" readonly></div>
           </div>
 
           <div class="fi" style="margin-top:4px">

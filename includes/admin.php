@@ -11,7 +11,11 @@ require_once __DIR__ . '/currency.php';
 /* ── Provider CRUD ─────────────────────────────────────────── */
 
 function get_all_providers(): array {
-    return db()->query('SELECT * FROM providers ORDER BY id')->fetchAll() ?: [];
+    // Only Virtualizor and Proxmox are supported now — hide any legacy rows
+    // (hetzner, vultr, etc.) from the panel without deleting their data.
+    return db()->query(
+        "SELECT * FROM providers WHERE provider_type IN ('virtualizor','proxmox') ORDER BY id"
+    )->fetchAll() ?: [];
 }
 function get_provider(int $id): ?array {
     $s = db()->prepare('SELECT * FROM providers WHERE id=? LIMIT 1');

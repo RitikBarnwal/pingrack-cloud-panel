@@ -289,8 +289,8 @@ function h($v): string { return htmlspecialchars((string)$v); }
             <!-- Billing cycles -->
             <div style="margin-top:18px">
               <label class="flabel" style="margin-bottom:8px;display:block">Billing Cycles <span class="fnote">— tick to enable, set total price per cycle</span></label>
-              <div class="tbl-wrap"><table class="tbl" style="min-width:520px">
-                <thead><tr><th style="width:70px">Enable</th><th>Cycle</th><th>Price INR (₹) total</th><th>Price USD ($) total</th></tr></thead>
+              <div class="tbl-wrap"><table class="tbl" style="min-width:420px">
+                <thead><tr><th style="width:70px">Enable</th><th>Cycle</th><th>Price INR (₹) total</th></tr></thead>
                 <tbody>
                 <?php
                   $cycle_labels = [1=>'Monthly',3=>'Quarterly (3 mo)',6=>'Semi-annual (6 mo)',12=>'Annual (12 mo)',24=>'Biennial (24 mo)',36=>'Triennial (36 mo)'];
@@ -299,8 +299,7 @@ function h($v): string { return htmlspecialchars((string)$v); }
                 <tr>
                   <td style="text-align:center"><input type="checkbox" name="cycle_enabled[<?= $m ?>]" id="cyc_en_<?= $m ?>" <?= $m===1?'checked':'' ?>></td>
                   <td style="font-weight:600"><?= $lbl ?></td>
-                  <td><input type="number" step="0.01" min="0" name="cycle_inr[<?= $m ?>]" id="cyc_inr_<?= $m ?>" value="0" style="max-width:160px"></td>
-                  <td><input type="number" step="0.01" min="0" name="cycle_usd[<?= $m ?>]" id="cyc_usd_<?= $m ?>" value="0" style="max-width:160px"></td>
+                  <td><input type="number" step="0.01" min="0" name="cycle_inr[<?= $m ?>]" id="cyc_inr_<?= $m ?>" value="0" style="max-width:180px"></td>
                 </tr>
                 <?php endforeach; ?>
                 </tbody>
@@ -347,7 +346,7 @@ function h($v): string { return htmlspecialchars((string)$v); }
               <td><?= $is_ded ? '<span class="muted">— manual —</span>' : h($p['provider_name'] ?? '—') ?><?php if (!empty($p['location'])): ?><div class="muted">📍 <?= h($p['location']) ?></div><?php endif; ?></td>
               <td><?= (int)$p['vcpu'] ?> <?= $is_ded?'cores':'vCPU' ?> · <?= h($p['ram_gb']) ?> GB · <?= (int)$p['disk_gb'] ?> GB</td>
               <td class="muted"><?= $enabled_cycles ? implode(', ', array_map(fn($m)=>$m.'mo', $enabled_cycles)) : '<span style="color:var(--danger)">no cycle</span>' ?></td>
-              <td style="font-family:var(--mono)">₹<?= number_format((float)$p['price_inr'],0) ?> · $<?= number_format((float)$p['price_usd'],2) ?><div class="muted" style="font-size:10px">/mo</div></td>
+              <td style="font-family:var(--mono)">₹<?= number_format((float)$p['price_inr'],0) ?><div class="muted" style="font-size:10px">/mo</div></td>
               <td><span class="badge <?= $p['is_active'] ? 'badge-green' : 'badge-gray' ?>"><?= $p['is_active'] ? 'Active' : 'Hidden' ?></span></td>
               <td style="white-space:nowrap">
                 <button class="btn btn-ghost btn-sm" onclick='editPkg(<?= json_encode($pkg_with_cycles, JSON_HEX_APOS|JSON_HEX_QUOT) ?>)'>Edit</button>
@@ -441,14 +440,12 @@ function setCycles(cycles) {
   CYCLES.forEach(function(m){
     document.getElementById('cyc_en_'+m).checked = false;
     document.getElementById('cyc_inr_'+m).value = 0;
-    document.getElementById('cyc_usd_'+m).value = 0;
   });
   (cycles||[]).forEach(function(c){
     var m = parseInt(c.months, 10);
     if (CYCLES.indexOf(m) === -1) return;
     document.getElementById('cyc_en_'+m).checked = c.is_enabled == 1;
     document.getElementById('cyc_inr_'+m).value = c.price_inr;
-    document.getElementById('cyc_usd_'+m).value = c.price_usd;
   });
 }
 
