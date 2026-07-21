@@ -672,9 +672,15 @@ try {
 
     /* Stats */
     .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
-    .stat-card{background:white;border:1px solid var(--border);border-radius:12px;padding:18px 20px}
-    .stat-val{font-size:28px;font-weight:900;color:var(--gray-900);letter-spacing:-1px;line-height:1}
-    .stat-lbl{font-size:12px;color:var(--gray-500);margin-top:4px}
+    .stat-card{position:relative;background:white;border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(15,23,42,.06);overflow:hidden;transition:box-shadow .16s,transform .16s}
+    .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--_accent,var(--primary));opacity:0;transition:opacity .16s}
+    .stat-card:hover{box-shadow:0 8px 22px rgba(15,23,42,.10);transform:translateY(-2px)}
+    .stat-card:hover::before{opacity:1}
+    .stat-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .stat-ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .stat-ic svg{width:18px;height:18px}
+    .stat-val{font-size:27px;font-weight:900;color:var(--gray-900);letter-spacing:-1px;line-height:1}
+    .stat-lbl{font-size:11.5px;color:var(--gray-500);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 
     /* Cards */
     .card{background:white;border:1px solid var(--border);border-radius:13px;overflow:hidden;margin-bottom:18px}
@@ -842,6 +848,19 @@ try {
 
       <?php if ($tab === 'overview'): ?>
       <!-- ═══════ OVERVIEW ═══════ -->
+      <?php
+        // KPI icons (inline SVG paths) keyed by label
+        $kpi_icons = [
+          'Total Users'   => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+          'Total Servers' => '<rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>',
+          'Running'       => '<polyline points="20 6 9 17 4 12"/>',
+          'Suspended'     => '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+          'Revenue'       => '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+          'Wallets'       => '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+          'Invoices'      => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+          'Providers'     => '<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>',
+        ];
+      ?>
       <div class="stats-grid">
         <?php foreach ([
           [$stats['total_users'],   'Total Users',    '#eff6ff','#2563eb'],
@@ -853,8 +872,13 @@ try {
           [$stats['invoices_count'],'Invoices',       '#f0fdf4','#16a34a'],
           [count($providers),       'Providers',      '#eff6ff','#2563eb'],
         ] as [$v,$l,$bg,$c]): ?>
-        <div class="stat-card">
-          <div class="stat-val" style="color:<?= $c ?>"><?= $v ?></div>
+        <div class="stat-card" style="--_accent:<?= $c ?>">
+          <div class="stat-card-top">
+            <div class="stat-val" style="color:<?= $c ?>"><?= $v ?></div>
+            <div class="stat-ic" style="background:<?= $bg ?>;color:<?= $c ?>">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><?= $kpi_icons[$l] ?? '' ?></svg>
+            </div>
+          </div>
           <div class="stat-lbl"><?= $l ?></div>
         </div>
         <?php endforeach; ?>

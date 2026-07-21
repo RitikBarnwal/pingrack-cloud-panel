@@ -135,6 +135,17 @@ function exitImpersonate() {
       $kyc_sidebar = $kyc_st->fetchColumn() ?: null;
     } catch(Throwable $e) { $kyc_sidebar = null; }
     ?>
+    <a href="<?= BASE_URL ?>/profile.php" class="nav-link <?= $current_page === 'profile.php' ? 'active' : '' ?>">
+      <svg fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      Settings
+    </a>
+    <a href="<?= BASE_URL ?>/billing.php" class="nav-link <?= $current_page === 'billing.php' ? 'active' : '' ?>">
+      <svg fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wallet" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>
+      Billing & Wallet
+      <?php if ((float)$user['wallet_balance'] < 5): ?>
+      <span class="badge badge-red" style="margin-left:auto;font-size:10px">Low</span>
+      <?php endif; ?>
+    </a>
     <?php if ($kyc_sidebar !== 'approved'): ?>
     <a href="<?= BASE_URL ?>/kyc.php" class="nav-link <?= $current_page === 'kyc.php' ? 'active' : '' ?>">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -148,32 +159,28 @@ function exitImpersonate() {
       <?php endif; ?>
     </a>
     <?php endif; ?>
-    <a href="<?= BASE_URL ?>/billing.php" class="nav-link <?= $current_page === 'billing.php' ? 'active' : '' ?>">
-      <svg fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wallet" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>
-      Billing & Wallet
-      <?php if ((float)$user['wallet_balance'] < 5): ?>
-      <span class="badge badge-red" style="margin-left:auto;font-size:10px">Low</span>
-      <?php endif; ?>
-    </a>
-    <a href="<?= BASE_URL ?>/referral.php" class="nav-link <?= $current_page === 'referral.php' ? 'active' : '' ?>">
-      <svg fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg>
-      Refer & Earn
-    </a>
-    <a href="<?= BASE_URL ?>/api-keys.php" class="nav-link <?= $current_page === 'api-keys.php' ? 'active' : '' ?>">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M4 17L10 12L4 7"></path>
-  <line x1="13" y1="17" x2="20" y2="17"></line>
-</svg>
-      API Access
-    </a>
-    <a href="<?= BASE_URL ?>/profile.php" class="nav-link <?= $current_page === 'profile.php' ? 'active' : '' ?>">
-      <svg fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><circle cx="12" cy="12" r="3"></circle></svg>
-      Setting
-    </a>
-    <a href="<?= BASE_URL ?>/history.php" class="nav-link <?= $current_page === 'history.php' ? 'active' : '' ?>">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      Activity History
-    </a>
+
+    <!-- More (collapsible secondary group) -->
+    <?php $more_active = in_array($current_page, ['referral.php','api-keys.php','history.php'], true); ?>
+    <button type="button" class="nav-group-head <?= $more_active ? '' : 'collapsed' ?>"
+            id="usr-more-head" onclick="usrToggleMore()" aria-expanded="<?= $more_active ? 'true' : 'false' ?>">
+      <svg class="nav-group-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      <span>More</span>
+    </button>
+    <div class="nav-group-items <?= $more_active ? 'open' : '' ?>" id="usr-more-items">
+      <a href="<?= BASE_URL ?>/referral.php" class="nav-link <?= $current_page === 'referral.php' ? 'active' : '' ?>">
+        <svg fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gift" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"></rect><path d="M12 8v13"></path><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path></svg>
+        Refer & Earn
+      </a>
+      <a href="<?= BASE_URL ?>/api-keys.php" class="nav-link <?= $current_page === 'api-keys.php' ? 'active' : '' ?>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17L10 12L4 7"></path><line x1="13" y1="17" x2="20" y2="17"></line></svg>
+        API Access
+      </a>
+      <a href="<?= BASE_URL ?>/history.php" class="nav-link <?= $current_page === 'history.php' ? 'active' : '' ?>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Activity History
+      </a>
+    </div>
     <?php if (($user['role'] ?? '') === 'admin'): ?>
     <div class="nav-label" style="margin-top:10px">Admin</div>
     <a href="<?= BASE_URL ?>/admin/" class="nav-link <?= str_contains($_SERVER['REQUEST_URI'],'/admin') ? 'active' : '' ?>">
@@ -202,6 +209,42 @@ function exitImpersonate() {
     </a>
   </div>
 </aside>
+
+<!-- ── User sidebar: collapsible group + active-link polish ─────── -->
+<style>
+.nav-group-head{
+  display:flex;align-items:center;gap:6px;width:100%;
+  margin-top:10px;padding:10px 10px 5px;
+  background:none;border:none;cursor:pointer;font-family:inherit;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--gray-400);transition:color .12s;
+}
+.nav-group-head:hover{color:var(--gray-600)}
+.nav-group-chev{width:11px;height:11px;flex-shrink:0;opacity:.75;transition:transform .2s cubic-bezier(.4,0,.2,1);transform:rotate(90deg)}
+.nav-group-head.collapsed .nav-group-chev{transform:rotate(0deg)}
+.nav-group-items{max-height:0;overflow:hidden;transition:max-height .28s cubic-bezier(.4,0,.2,1)}
+.nav-group-items.open{max-height:320px}
+.nav-group-items .nav-link{padding-left:14px;position:relative}
+.nav-group-items .nav-link::after{content:'';position:absolute;left:5px;top:50%;transform:translateY(-50%);width:3px;height:3px;border-radius:50%;background:var(--gray-300)}
+.nav-group-items .nav-link.active::after{background:var(--primary)}
+.nav-link.active{box-shadow:inset 0 0 0 1px hsl(0 0% 9% / .06)}
+</style>
+<script>
+function usrToggleMore(){
+  var h=document.getElementById('usr-more-head'),i=document.getElementById('usr-more-items');
+  if(!h||!i)return;
+  var o=i.classList.toggle('open');
+  h.classList.toggle('collapsed',!o);
+  h.setAttribute('aria-expanded',o?'true':'false');
+  try{localStorage.setItem('usr_more_open',o?'1':'0')}catch(e){}
+}
+(function(){
+  var h=document.getElementById('usr-more-head'),i=document.getElementById('usr-more-items');
+  if(!h||!i)return;
+  if(<?= $more_active ? 'true' : 'false' ?>)return;         // keep open when a child page is active
+  try{if(localStorage.getItem('usr_more_open')==='1'){i.classList.add('open');h.classList.remove('collapsed');h.setAttribute('aria-expanded','true');}}catch(e){}
+})();
+</script>
 
 <?php if (get_setting('callback_enabled', '1') === '1'): ?>
 <!-- ══════════════════════════════════════════════════════════════════ -->
