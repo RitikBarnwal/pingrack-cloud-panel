@@ -3312,8 +3312,8 @@ if ($sel_tid) {
         </div>
         <div class="form-row full">
           <div>
-            <label class="flabel">API Key <span>(leave blank to keep existing)</span></label>
-            <textarea name="api_key" id="epp_key" class="form-control" placeholder="Virtualizor API key (or Proxmox JSON) — blank to keep existing" style="font-family:monospace" rows="3"></textarea>
+            <label class="flabel">API Key</label>
+            <textarea name="api_key" id="epp_key" class="form-control" placeholder="Virtualizor API key (or Proxmox JSON credentials)" style="font-family:monospace" rows="3"></textarea>
             <div id="epp_key_hint" style="display:none;margin-top:6px;padding:8px 10px;background:#0d1117;border-radius:6px;font-family:monospace;font-size:11px;color:#3fb950;white-space:pre;line-height:1.6"></div>
           </div>
         </div>
@@ -3609,12 +3609,27 @@ function openEditPlan(plan, regions) {
 
 /* ── Edit provider ─────────────────────────────────────────── */
 function openEditProv(prov) {
+  // Resolve Virtualizor creds from columns OR from legacy JSON in api_key,
+  // so the details always show even before the DB columns are added.
+  var panel = prov.panel_url || '';
+  var apiKey = prov.api_key || '';
+  var apiPass = prov.api_pass || '';
+  if ((!panel || !apiPass) && typeof apiKey === 'string' && apiKey.trim().charAt(0) === '{') {
+    try {
+      var j = JSON.parse(apiKey);
+      panel   = panel   || (j.panel_url || '');
+      apiPass = apiPass || (j.api_pass  || '');
+      apiKey  = j.api_key || '';
+    } catch (e) {}
+  }
+
   document.getElementById('epp_id').value    = prov.id;
   document.getElementById('epp_type').value  = prov.provider_type || 'virtualizor';
   document.getElementById('epp_name').value  = prov.display_name;
-  document.getElementById('epp_key').value   = '';
-  document.getElementById('epp_panel').value = prov.panel_url || '';
-  document.getElementById('epp_pass').value  = '';   // blank = keep existing
+  document.getElementById('epp_panel').value = panel;
+  // Prefill the actual key/pass so the admin can see what's saved (editable).
+  document.getElementById('epp_key').value   = (prov.provider_type === 'proxmox') ? (prov.api_key || '') : apiKey;
+  document.getElementById('epp_pass').value  = apiPass;
   // Virtualizor uses panel/key/pass columns; Proxmox uses a JSON blob in api_key
   document.getElementById('epp_virt_fields').style.display = (prov.provider_type === 'proxmox') ? 'none' : '';
   document.getElementById('epp_cur').value   = prov.currency_base || 'EUR';
