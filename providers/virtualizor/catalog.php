@@ -112,10 +112,21 @@ class VirtualizorCatalog
 
     public function plans(): array
     {
-        $raw  = $this->http->get('listplans');
-        $list = [];
+        // Virtualizor admin API lists VPS plans via act=plans (returns key `plans`).
+        // Older/edge builds may answer to `listplans` / return `planlist`, so try
+        // both acts and accept any of the known response keys.
+        $raw = $this->http->get('plans');
+        $rows = $raw['plans'] ?? $raw['planlist'] ?? $raw['plan'] ?? [];
+        if (empty($rows)) {
+            try {
+                $raw2 = $this->http->get('listplans');
+                $rows = $raw2['plans'] ?? $raw2['planlist'] ?? $raw2['plan'] ?? [];
+            } catch (Throwable $e) { /* keep first result */ }
+        }
 
-        foreach ($raw['plans'] ?? $raw['planlist'] ?? [] as $id => $p) {
+        $list = [];
+        foreach ($rows as $id => $p) {
+            if (!is_array($p)) continue;
             $planid = (string)($p['plid'] ?? $p['id'] ?? $id);
             $name   = $p['plan_name']  ?? $p['name'] ?? 'Plan ' . $planid;
             $ram_mb = (int)($p['ram']  ?? 0);

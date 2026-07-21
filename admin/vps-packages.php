@@ -32,12 +32,25 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'load') {
         require_once __DIR__ . '/../providers/virtualizor/catalog.php';
         $client = new VirtualizorClient($prov['api_key']);
         $cat    = new VirtualizorCatalog($client);
-        echo json_encode([
-            'ok'    => true,
-            'plans' => array_values($cat->plans()),
-            'nodes' => array_values($cat->regions()),
-            'os'    => array_values($cat->images()),
-        ]);
+        $plans  = array_values($cat->plans());
+        $nodes  = array_values($cat->regions());
+        $os     = array_values($cat->images());
+
+        $resp = ['ok' => true, 'plans' => $plans, 'nodes' => $nodes, 'os' => $os];
+
+        // Diagnostic: if plans came back empty, include the raw API response
+        // keys so we can see what this Virtualizor build actually returns.
+        if (empty($plans)) {
+            $dbg = [];
+            foreach (['plans', 'listplans'] as $act) {
+                try {
+                    $r = $client->get($act);
+                    $dbg[$act] = ['keys' => array_keys($r), 'sample' => array_slice($r, 0, 3, true)];
+                } catch (Throwable $e) { $dbg[$act] = ['error' => $e->getMessage()]; }
+            }
+            $resp['plans_debug'] = $dbg;
+        }
+        echo json_encode($resp);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
     }
@@ -386,7 +399,12 @@ function loadCatalog(cb) {
       fillSelect('f_node', d.nodes, function(n){ return [n.slug, (n.label||n.name||('Node '+n.slug))]; });
       fillSelect('f_os',   d.os,    function(o){ return [o.slug, (o.name||o.label||o.slug)]; });
       ['f_plan','f_node','f_os'].forEach(function(id){ document.getElementById(id).disabled = false; });
-      note.innerHTML = '<span style="color:var(--success)">Loaded '+ d.plans.length +' plans, '+ d.nodes.length +' nodes, '+ d.os.length +' OS.</span>';
+      var col = d.plans.length ? 'var(--success)' : 'var(--warn)';
+      note.innerHTML = '<span style="color:'+col+'">Loaded '+ d.plans.length +' plans, '+ d.nodes.length +' nodes, '+ d.os.length +' OS.</span>';
+      if (!d.plans.length && d.plans_debug) {
+        note.innerHTML += '<pre style="margin-top:8px;padding:8px;background:#0d1117;color:#c9d1d9;border-radius:6px;font-size:11px;max-height:180px;overflow:auto">Virtualizor returned no plans. Raw response:\n' +
+          JSON.stringify(d.plans_debug, null, 2).replace(/</g,'&lt;') + '</pre>';
+      }
       if (cb) cb();
     })
     .catch(function(){ note.innerHTML = '<span style="color:var(--danger)">Network error.</span>'; });
