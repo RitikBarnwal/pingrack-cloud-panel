@@ -1,0 +1,21 @@
+{
+    "name": "cloudvault/app",
+    "description": "CloudVault – PHP Cloud VPS Provider",
+    "type": "project",
+    "require": {
+        "php": ">=8.3",
+        "stripe/stripe-php": "^15.0",
+        "monolog/monolog": "^3.0",
+        "phpmailer/phpmailer": "^6.9",
+        "dompdf/dompdf": "^3.1"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist"
+    },
+    "autoload": {
+        "psr-4": {
+            "CloudVault\\": "src/"
+        }
+    }
+}
