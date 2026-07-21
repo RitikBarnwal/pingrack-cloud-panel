@@ -1909,35 +1909,43 @@ input:checked + .toggle-sw::after,
 .adm-group-head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  width: calc(100% - 0px);
-  margin-top: 14px;
-  padding: 6px 10px 5px;
+  gap: 8px;
+  width: 100%;
+  margin: 12px 0 2px;
+  padding: 8px 10px;
   background: transparent;
   border: none;
+  border-radius: var(--r-sm);
   cursor: pointer;
   font-family: var(--font);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1.1px;
-  color: rgba(255,255,255,.28);
-  transition: color var(--t);
+  letter-spacing: .8px;
+  line-height: 1.2;
+  text-align: left;
+  color: rgba(255,255,255,.42);
+  transition: background var(--t), color var(--t);
 }
-.adm-group-head:hover { color: rgba(255,255,255,.55); }
+.adm-group-head:hover {
+  background: var(--sidebar-link-hov);
+  color: rgba(255,255,255,.85);
+}
+.adm-group-head span { flex: 1; }   /* label fills row, pushes badge to the right */
 
 .adm-group-chev {
-  width: 11px; height: 11px;
+  width: 13px; height: 13px;
   flex-shrink: 0;
-  opacity: .7;
-  transition: transform .2s cubic-bezier(.4,0,.2,1);
+  opacity: .85;
+  transition: transform .22s cubic-bezier(.4,0,.2,1);
   transform: rotate(90deg);   /* expanded → points down */
 }
 .adm-group-head.collapsed .adm-group-chev { transform: rotate(0deg); } /* collapsed → points right */
 
 .adm-group-badge {
-  margin-left: auto;
-  margin-right: 2px;
+  margin-left: 0;
+  margin-right: 0;
+  flex-shrink: 0;
 }
 
 /* Collapsible body — animated max-height */
