@@ -1,0 +1,130 @@
+<?php
+/**
+ * install-db.php — one-shot DB migrator (run in browser)
+ *
+ * Creates any MISSING tables for the VPS Packages feature (WHMCS-style).
+ * Uses the DB credentials from includes/config.php via db().
+ * Safe to re-run: every statement is CREATE TABLE IF NOT EXISTS / additive.
+ *
+ * Access: admin only. Visit  https://<your-domain>/install-db.php
+ * Delete this file (or leave it — it's admin-gated) once tables exist.
+ */
+declare(strict_types=1);
+require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/admin.php';
+require_admin(); // must be logged in as admin
+
+header('Content-Type: text/html; charset=utf-8');
+
+// ── Table definitions ─────────────────────────────────────────
+$tables = [
+
+// WHMCS-style sellable VPS package linked to a Virtualizor plan/node/OS
+'vps_packages' => "
+CREATE TABLE IF NOT EXISTS vps_packages (
+    id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    provider_id   INT UNSIGNED NOT NULL,            -- providers.id (a virtualizor provider)
+    name          VARCHAR(120)  NOT NULL,
+    slug          VARCHAR(140)  NOT NULL,
+    description   TEXT          NULL,
+    virt_plid     VARCHAR(64)   NOT NULL,           -- Virtualizor plan id (plid)
+    virt_serid    VARCHAR(64)   NOT NULL,           -- Virtualizor node/server id (serid)
+    virt_osid     VARCHAR(64)   NOT NULL,           -- default OS template id (osid)
+    os_label      VARCHAR(120)  NOT NULL DEFAULT '',
+    vcpu          INT UNSIGNED  NOT NULL DEFAULT 1,
+    ram_gb        DECIMAL(6,1)  NOT NULL DEFAULT 1,
+    disk_gb       INT UNSIGNED  NOT NULL DEFAULT 25,
+    bandwidth_gb  INT UNSIGNED  NOT NULL DEFAULT 0,
+    price_inr     DECIMAL(10,2) NOT NULL DEFAULT 0, -- monthly, INR
+    price_usd     DECIMAL(10,2) NOT NULL DEFAULT 0, -- monthly, USD
+    billing_cycle VARCHAR(20)   NOT NULL DEFAULT 'monthly',
+    is_active     TINYINT(1)    NOT NULL DEFAULT 1,
+    sort_order    INT           NOT NULL DEFAULT 0,
+    created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_slug (slug),
+    KEY idx_provider (provider_id),
+    KEY idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+// Order/provision ledger for package purchases
+'vps_package_orders' => "
+CREATE TABLE IF NOT EXISTS vps_package_orders (
+    id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id      INT UNSIGNED  NOT NULL,
+    package_id   INT UNSIGNED  NOT NULL,
+    server_id    INT UNSIGNED  NULL,               -- servers.id once provisioned
+    vpsid        VARCHAR(64)   NULL,               -- Virtualizor VPS id
+    status       ENUM('pending','active','failed','refunded') NOT NULL DEFAULT 'pending',
+    amount       DECIMAL(10,2) NOT NULL DEFAULT 0,
+    currency     VARCHAR(8)    NOT NULL DEFAULT 'INR',
+    error        VARCHAR(500)  NULL,
+    created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_user (user_id),
+    KEY idx_pkg (package_id),
+    KEY idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+];
+
+// ── Run + report ──────────────────────────────────────────────
+$pdo = db();
+$results = [];
+
+// Which of our tables already exist?
+$existing = [];
+try {
+    foreach ($pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN) as $t) $existing[$t] = true;
+} catch (Throwable $e) {}
+
+foreach ($tables as $name => $sql) {
+    $was = isset($existing[$name]);
+    try {
+        $pdo->exec($sql);
+        $results[$name] = $was ? ['ok', 'already existed — left unchanged'] : ['new', 'created'];
+    } catch (Throwable $e) {
+        $results[$name] = ['err', $e->getMessage()];
+    }
+}
+?><!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DB Installer — <?= htmlspecialchars(APP_NAME) ?></title>
+<style>
+  body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:40px 16px}
+  .box{max-width:680px;margin:0 auto;background:#1e293b;border:1px solid #334155;border-radius:16px;overflow:hidden}
+  .hd{padding:22px 26px;border-bottom:1px solid #334155}
+  .hd h1{margin:0;font-size:19px}
+  .hd p{margin:6px 0 0;color:#94a3b8;font-size:13px}
+  .bd{padding:14px 26px 26px}
+  .row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #24324a}
+  .row:last-child{border-bottom:none}
+  .tag{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:4px 9px;border-radius:99px;flex-shrink:0}
+  .new{background:#052e1a;color:#4ade80}
+  .ok{background:#0c2340;color:#60a5fa}
+  .err{background:#3b0d0d;color:#f87171}
+  .nm{font-weight:700;font-family:ui-monospace,monospace}
+  .ms{color:#94a3b8;font-size:13px;margin-left:auto;text-align:right}
+  .done{margin-top:20px;padding:14px 16px;background:#052e1a;border:1px solid #16643a;border-radius:10px;color:#86efac;font-size:14px}
+  a{color:#60a5fa}
+</style></head><body>
+<div class="box">
+  <div class="hd">
+    <h1>Database Installer</h1>
+    <p>Creating missing tables for VPS Packages. Safe to re-run.</p>
+  </div>
+  <div class="bd">
+    <?php foreach ($results as $name => [$state, $msg]): ?>
+    <div class="row">
+      <span class="tag <?= $state ?>"><?= $state === 'new' ? 'Created' : ($state === 'ok' ? 'Exists' : 'Error') ?></span>
+      <span class="nm"><?= htmlspecialchars($name) ?></span>
+      <span class="ms"><?= htmlspecialchars($msg) ?></span>
+    </div>
+    <?php endforeach; ?>
+    <div class="done">
+      ✓ Done. Now open <a href="<?= BASE_URL ?>/admin/vps-packages.php">Admin → VPS Packages</a> to create packages.
+      You can delete <code>install-db.php</code> when finished.
+    </div>
+  </div>
+</div>
+</body></html>
