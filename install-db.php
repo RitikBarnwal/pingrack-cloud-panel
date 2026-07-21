@@ -65,6 +65,20 @@ CREATE TABLE IF NOT EXISTS vps_package_orders (
     KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
+// Admin-defined location for each Virtualizor node (serid), per provider.
+// Virtualizor's own `location` is free-text and usually empty, so we let the
+// admin label nodes here; packages on that node auto-inherit the location.
+'virt_node_locations' => "
+CREATE TABLE IF NOT EXISTS virt_node_locations (
+    id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    provider_id   INT UNSIGNED  NOT NULL,
+    serid         VARCHAR(64)   NOT NULL,
+    location      VARCHAR(120)  NOT NULL DEFAULT '',
+    location_flag VARCHAR(8)    NOT NULL DEFAULT '',
+    UNIQUE KEY uq_prov_serid (provider_id, serid),
+    KEY idx_provider (provider_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
 // Per-package billing cycles (1,3,6,12,24,36 months) with enable + price
 'package_cycles' => "
 CREATE TABLE IF NOT EXISTS package_cycles (

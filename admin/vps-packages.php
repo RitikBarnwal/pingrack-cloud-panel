@@ -36,6 +36,20 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'load') {
         $nodes  = array_values($cat->regions());
         $os     = array_values($cat->images());
 
+        // Merge admin-defined node locations (override Virtualizor's blank ones)
+        $saved = [];
+        try {
+            $ns = db()->prepare("SELECT serid, location, location_flag FROM virt_node_locations WHERE provider_id=?");
+            $ns->execute([$pid]);
+            foreach ($ns->fetchAll() as $r) $saved[(string)$r['serid']] = $r;
+        } catch (Throwable $e) {}
+        foreach ($nodes as &$n) {
+            $sv = $saved[(string)$n['slug']] ?? null;
+            $n['location']      = $sv['location']      ?? ($n['location'] ?? '');
+            $n['location_flag'] = $sv['location_flag'] ?? '';
+        }
+        unset($n);
+
         $resp = ['ok' => true, 'plans' => $plans, 'nodes' => $nodes, 'os' => $os];
 
         // Diagnostic: if plans came back empty, include the raw API response
@@ -53,6 +67,29 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'load') {
         echo json_encode($resp);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── AJAX: save a node's location (per provider) ───────────────
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'save_node_loc') {
+    header('Content-Type: application/json');
+    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+    if (!verify_csrf($body['csrf'] ?? '')) { echo json_encode(['ok'=>false,'error'=>'Invalid CSRF']); exit; }
+    $pid   = (int)($body['provider_id'] ?? 0);
+    $serid = trim((string)($body['serid'] ?? ''));
+    $loc   = trim((string)($body['location'] ?? ''));
+    $flag  = strtolower(trim((string)($body['location_flag'] ?? '')));
+    if (!$pid || $serid === '') { echo json_encode(['ok'=>false,'error'=>'provider_id and serid required']); exit; }
+    try {
+        db()->prepare(
+            "INSERT INTO virt_node_locations (provider_id, serid, location, location_flag)
+             VALUES (?,?,?,?)
+             ON DUPLICATE KEY UPDATE location=VALUES(location), location_flag=VALUES(location_flag)"
+        )->execute([$pid, $serid, $loc, $flag]);
+        echo json_encode(['ok'=>true]);
+    } catch (Throwable $e) {
+        echo json_encode(['ok'=>false,'error'=>$e->getMessage()]);
     }
     exit;
 }
@@ -238,8 +275,12 @@ function h($v): string { return htmlspecialchars((string)$v); }
                 <input type="number" name="sort_order" id="f_sort" value="0">
               </div>
               <div>
-                <label class="flabel">Location <span class="fnote">(customers pick a location first)</span></label>
-                <input name="location" id="f_loc" placeholder="e.g. Mumbai, India" list="locList">
+                <label class="flabel">Location <span class="fnote">(auto-fills from the selected node)</span></label>
+                <div style="display:flex;gap:6px">
+                  <input name="location" id="f_loc" placeholder="e.g. Mumbai, India" list="locList" style="flex:1">
+                  <button type="button" class="btn btn-ghost btn-sm" id="saveNodeLocBtn" onclick="saveNodeLoc()" title="Save this location as the default for the selected node" style="display:none;white-space:nowrap">💾 Node default</button>
+                </div>
+                <div class="fnote" id="nodeLocNote"></div>
                 <datalist id="locList">
                   <?php
                     try {
@@ -275,7 +316,7 @@ function h($v): string { return htmlspecialchars((string)$v); }
                 </div>
                 <div>
                   <label class="fnote">Node / Location</label>
-                  <select name="virt_serid" id="f_node" disabled><option value="">Load provider first…</option></select>
+                  <select name="virt_serid" id="f_node" disabled onchange="applyNode()"><option value="">Load provider first…</option></select>
                 </div>
                 <div>
                   <label class="fnote">Default OS Template</label>
@@ -428,6 +469,44 @@ function applyPlan() {
   if (p.vcpu)    document.getElementById('f_vcpu').value = p.vcpu;
   if (p.ram_gb)  document.getElementById('f_ram').value  = p.ram_gb;
   if (p.disk_gb) document.getElementById('f_disk').value = p.disk_gb;
+}
+
+// When a node is picked, auto-fill Location/Flag from the node's saved location.
+function applyNode() {
+  var serid = document.getElementById('f_node').value;
+  var n = (CATALOG.nodes||[]).find(function(x){ return String(x.slug) === String(serid); });
+  var btn = document.getElementById('saveNodeLocBtn');
+  var note = document.getElementById('nodeLocNote');
+  if (!serid) { btn.style.display='none'; note.textContent=''; return; }
+  if (n) {
+    if (n.location)      document.getElementById('f_loc').value = n.location;
+    if (n.location_flag) document.getElementById('f_locflag').value = n.location_flag;
+  }
+  btn.style.display = '';   // allow saving/updating this node's default location
+  note.textContent = n && n.location ? '' : 'No saved location for this node yet — set one and click “Node default”.';
+}
+
+function saveNodeLoc() {
+  var pid   = document.getElementById('f_provider').value;
+  var serid = document.getElementById('f_node').value;
+  var loc   = document.getElementById('f_loc').value.trim();
+  var flag  = document.getElementById('f_locflag').value.trim();
+  var note  = document.getElementById('nodeLocNote');
+  if (!pid || !serid) { note.innerHTML = '<span style="color:var(--danger)">Select a provider and node first.</span>'; return; }
+  note.textContent = 'Saving…';
+  fetch(BASEP + '?ajax=save_node_loc', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({provider_id:pid, serid:serid, location:loc, location_flag:flag, csrf:'<?= $csrf ?>'})
+  }).then(function(r){return r.json();}).then(function(d){
+    if (d.ok) {
+      // reflect in the in-memory catalog so future selections use it
+      var n = (CATALOG.nodes||[]).find(function(x){ return String(x.slug) === String(serid); });
+      if (n) { n.location = loc; n.location_flag = flag; }
+      note.innerHTML = '<span style="color:var(--success)">Saved as default for this node.</span>';
+    } else {
+      note.innerHTML = '<span style="color:var(--danger)">'+(d.error||'Failed')+'</span>';
+    }
+  }).catch(function(){ note.innerHTML = '<span style="color:var(--danger)">Network error.</span>'; });
 }
 function captureOs() {
   var sel = document.getElementById('f_os');
