@@ -65,6 +65,32 @@ CREATE TABLE IF NOT EXISTS vps_package_orders (
     KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
+// Per-package billing cycles (1,3,6,12,24,36 months) with enable + price
+'package_cycles' => "
+CREATE TABLE IF NOT EXISTS package_cycles (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    package_id  INT UNSIGNED  NOT NULL,
+    months      SMALLINT UNSIGNED NOT NULL,        -- 1,3,6,12,24,36
+    price_inr   DECIMAL(10,2) NOT NULL DEFAULT 0,  -- total for the whole cycle
+    price_usd   DECIMAL(10,2) NOT NULL DEFAULT 0,
+    is_enabled  TINYINT(1)    NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_pkg_months (package_id, months),
+    KEY idx_pkg (package_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+];
+
+// ── Idempotent column additions (MySQL-safe: checks information_schema) ──
+$alters = [
+    // package type: vps (auto-provision) or dedicated (manual, no panel)
+    ['vps_packages',       'ptype',        "ALTER TABLE vps_packages ADD COLUMN ptype ENUM('vps','dedicated') NOT NULL DEFAULT 'vps' AFTER name"],
+    ['vps_packages',       'cpu_label',    "ALTER TABLE vps_packages ADD COLUMN cpu_label VARCHAR(160) NOT NULL DEFAULT '' AFTER os_label"],
+    // servers: prepaid support so hourly cron can skip + expiry can suspend
+    ['servers',            'billing_type', "ALTER TABLE servers ADD COLUMN billing_type ENUM('hourly','prepaid') NOT NULL DEFAULT 'hourly'"],
+    ['servers',            'expires_at',   "ALTER TABLE servers ADD COLUMN expires_at DATETIME NULL"],
+    // orders: which cycle + when it expires
+    ['vps_package_orders', 'cycle_months', "ALTER TABLE vps_package_orders ADD COLUMN cycle_months SMALLINT UNSIGNED NOT NULL DEFAULT 1"],
+    ['vps_package_orders', 'expires_at',   "ALTER TABLE vps_package_orders ADD COLUMN expires_at DATETIME NULL"],
 ];
 
 // ── Run + report ──────────────────────────────────────────────
@@ -84,6 +110,33 @@ foreach ($tables as $name => $sql) {
         $results[$name] = $was ? ['ok', 'already existed — left unchanged'] : ['new', 'created'];
     } catch (Throwable $e) {
         $results[$name] = ['err', $e->getMessage()];
+    }
+}
+
+// Column migrations (add only if missing)
+$dbname = DB_NAME;
+$colExists = function(string $table, string $col) use ($pdo, $dbname): bool {
+    $st = $pdo->prepare(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA=? AND TABLE_NAME=? AND COLUMN_NAME=?"
+    );
+    $st->execute([$dbname, $table, $col]);
+    return (int)$st->fetchColumn() > 0;
+};
+foreach ($alters as [$table, $col, $sql]) {
+    $label = "$table.$col";
+    try {
+        if (!isset($existing[$table]) && $table !== 'servers') {
+            $results[$label] = ['ok', 'parent table absent — skipped']; continue;
+        }
+        if ($colExists($table, $col)) {
+            $results[$label] = ['ok', 'column already present'];
+        } else {
+            $pdo->exec($sql);
+            $results[$label] = ['new', 'column added'];
+        }
+    } catch (Throwable $e) {
+        $results[$label] = ['err', $e->getMessage()];
     }
 }
 ?><!doctype html>

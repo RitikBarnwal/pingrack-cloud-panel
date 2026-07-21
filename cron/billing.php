@@ -127,6 +127,31 @@ foreach ($running as $srv) {
     $balance   = (float)$srv['wallet_balance'];
     $sym       = $currency === 'INR' ? '₹' : '$';
 
+    // ── Prepaid (package) servers: never hourly-billed. Suspend at expiry. ──
+    if (($srv['billing_type'] ?? 'hourly') === 'prepaid') {
+        if (!empty($srv['expires_at']) && strtotime($srv['expires_at']) < time()) {
+            // Paid period ended — power down + suspend until renewal.
+            try {
+                $ph = load_provider_handler($srv);
+                if ($ph) {
+                    try { $ph['handler']->shutdown(); }
+                    catch (Throwable $e) { try { $ph['handler']->stop(); } catch (Throwable $e2) {} }
+                }
+            } catch (Throwable $e) { error_log('[billing-prepaid-expire] ' . $e->getMessage()); }
+
+            db()->prepare("UPDATE servers SET status='suspended', suspended_at=NOW() WHERE id=?")->execute([$server_id]);
+            billing_mail($srv['email'], $srv['full_name'] ?: $srv['username'],
+                APP_NAME . ' — Server Expired: ' . $srv['name'],
+                email_wrap('Server Expired', '#d97706',
+                    '<p style="font-size:15px;color:#111827">Your prepaid server <strong>' . htmlspecialchars($srv['name']) . '</strong> has reached the end of its billing period and is now suspended.</p>
+                     <p style="font-size:14px;color:#6b7280">Renew from your dashboard to bring it back online.</p>
+                     <a href="' . BASE_URL . '/servers.php" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;border-radius:8px;font-weight:700;text-decoration:none;margin-top:12px">Renew Now →</a>'));
+            cron_log("  EXPIRED prepaid server #{$server_id} ({$srv['name']})");
+            $suspended++;
+        }
+        continue; // prepaid servers are never charged hourly
+    }
+
     // Skip if billed this hour already
     if ($srv['last_billed_at'] && (time() - strtotime($srv['last_billed_at'])) < 3500) {
         cron_log("  SKIP server #{$server_id} (already billed this hour)");

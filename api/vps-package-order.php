@@ -27,54 +27,99 @@ $package_id = (int)($body['package_id'] ?? 0);
 $hostname   = trim($body['hostname'] ?? '');
 if (!$package_id) { echo json_encode(['ok'=>false,'error'=>'Package required']); exit; }
 
-// ── Load package + its Virtualizor provider ───────────────────
+$cycle_months = (int)($body['cycle_months'] ?? 1);
+
+// ── Load package ──────────────────────────────────────────────
 $pkg = db()->prepare("SELECT * FROM vps_packages WHERE id=? AND is_active=1 LIMIT 1");
 $pkg->execute([$package_id]);
 $pkg = $pkg->fetch();
 if (!$pkg) { echo json_encode(['ok'=>false,'error'=>'Package not available']); exit; }
 
-$prov = db()->prepare("SELECT * FROM providers WHERE id=? AND provider_type='virtualizor' LIMIT 1");
-$prov->execute([(int)$pkg['provider_id']]);
-$prov = $prov->fetch();
-if (!$prov || empty($prov['api_key'])) { echo json_encode(['ok'=>false,'error'=>'Provider not configured']); exit; }
-
-// ── Price in the user's currency (monthly) ────────────────────
+$ptype    = ($pkg['ptype'] ?? 'vps') === 'dedicated' ? 'dedicated' : 'vps';
 $currency = strtoupper($user['currency'] ?? 'INR');
-$price    = $currency === 'USD' ? (float)$pkg['price_usd'] : (float)$pkg['price_inr'];
 $sym      = $currency === 'USD' ? '$' : '₹';
 
-// ── Optional server-limit / KYC gate (same rules as panel) ────
-$max_servers = (int)get_setting('max_servers_per_user', '0');
-if ($max_servers > 0 && ($user['role'] ?? 'user') === 'user') {
-    $cnt = db()->prepare("SELECT COUNT(*) FROM servers WHERE user_id=? AND deleted_at IS NULL");
-    $cnt->execute([(int)$user['id']]);
-    if ((int)$cnt->fetchColumn() >= $max_servers) {
-        echo json_encode(['ok'=>false,'error'=>"Server limit reached ($max_servers). Contact support."]); exit;
+// ── Resolve the chosen billing cycle (must be enabled) ────────
+$cyc = db()->prepare("SELECT * FROM package_cycles WHERE package_id=? AND months=? AND is_enabled=1 LIMIT 1");
+$cyc->execute([$package_id, $cycle_months]);
+$cyc = $cyc->fetch();
+if (!$cyc) { echo json_encode(['ok'=>false,'error'=>'Selected billing cycle is not available for this package.']); exit; }
+
+$price = $currency === 'USD' ? (float)$cyc['price_usd'] : (float)$cyc['price_inr'];
+if ($price <= 0) { echo json_encode(['ok'=>false,'error'=>'This cycle has no price set. Contact support.']); exit; }
+
+// ── Server-limit gate (VPS only; dedicated is manual) ─────────
+if ($ptype === 'vps') {
+    $max_servers = (int)get_setting('max_servers_per_user', '0');
+    if ($max_servers > 0 && ($user['role'] ?? 'user') === 'user') {
+        $cnt = db()->prepare("SELECT COUNT(*) FROM servers WHERE user_id=? AND deleted_at IS NULL");
+        $cnt->execute([(int)$user['id']]);
+        if ((int)$cnt->fetchColumn() >= $max_servers) {
+            echo json_encode(['ok'=>false,'error'=>"Server limit reached ($max_servers). Contact support."]); exit;
+        }
     }
 }
 
-// ── Charge wallet (first month) ───────────────────────────────
-if ($price > 0) {
-    $ok = wallet_deduct((int)$user['id'], $price, 'VPS package: ' . $pkg['name'], 'package_order', $package_id);
-    if (!$ok) {
-        echo json_encode(['ok'=>false,'error'=>'Insufficient balance. Please top up '.$sym.number_format($price,2).' and try again.','code'=>'INSUFFICIENT_BALANCE']); exit;
-    }
+$cycle_label = $cycle_months === 1 ? '1 month' : $cycle_months . ' months';
+
+// ── Charge wallet (full cycle upfront — prepaid) ──────────────
+$ok = wallet_deduct((int)$user['id'], $price, 'VPS package: ' . $pkg['name'] . ' (' . $cycle_label . ')', 'package_order', $package_id);
+if (!$ok) {
+    echo json_encode(['ok'=>false,'error'=>'Insufficient balance. Please top up '.$sym.number_format($price,2).' and try again.','code'=>'INSUFFICIENT_BALANCE']); exit;
 }
 
-// ── Record pending order ──────────────────────────────────────
-db()->prepare("INSERT INTO vps_package_orders (user_id,package_id,status,amount,currency) VALUES (?,?, 'pending', ?, ?)")
-    ->execute([(int)$user['id'], $package_id, $price, $currency]);
+$expires_at = date('Y-m-d H:i:s', strtotime("+{$cycle_months} months"));
+
+// ── Record order (pending) ────────────────────────────────────
+db()->prepare("INSERT INTO vps_package_orders (user_id,package_id,status,amount,currency,cycle_months,expires_at) VALUES (?,?, 'pending', ?, ?, ?, ?)")
+    ->execute([(int)$user['id'], $package_id, $price, $currency, $cycle_months, $expires_at]);
 $order_id = (int)db()->lastInsertId();
 
 // Helper: refund + mark failed, then respond
 $fail = function(string $err) use ($order_id, $price, $user, $package_id) {
-    if ($price > 0) {
-        wallet_credit((int)$user['id'], $price, 'Refund — VPS provisioning failed', 'refund', $package_id);
-    }
+    wallet_credit((int)$user['id'], $price, 'Refund — provisioning failed', 'refund', $package_id);
     db()->prepare("UPDATE vps_package_orders SET status='refunded', error=? WHERE id=?")
         ->execute([substr($err, 0, 500), $order_id]);
     echo json_encode(['ok'=>false,'error'=>$err]); exit;
 };
+
+// ════════════════════════════════════════════════════════════
+//  DEDICATED — no panel: charge + pending order + notify admin
+// ════════════════════════════════════════════════════════════
+if ($ptype === 'dedicated') {
+    // Order stays 'pending' for manual fulfilment. Notify admin by email (non-fatal).
+    try {
+        require_once __DIR__ . '/../includes/mailer.php';
+        $admin_email = get_setting('company_email', '') ?: get_setting('SMTP_FROM', '');
+        if ($admin_email && function_exists('send_mail')) {
+            send_mail($admin_email, 'Admin',
+                'New Dedicated Server order #' . $order_id,
+                '<h2>New Dedicated Server Order</h2>'
+                . '<p><strong>Customer:</strong> ' . htmlspecialchars($user['full_name'] ?: $user['username']) . ' (' . htmlspecialchars($user['email']) . ')</p>'
+                . '<p><strong>Package:</strong> ' . htmlspecialchars($pkg['name']) . '</p>'
+                . '<p><strong>Cycle:</strong> ' . $cycle_label . '</p>'
+                . '<p><strong>Paid:</strong> ' . $sym . number_format($price, 2) . '</p>'
+                . '<p><strong>Specs:</strong> ' . (int)$pkg['vcpu'] . ' cores / ' . htmlspecialchars($pkg['ram_gb']) . ' GB / ' . (int)$pkg['disk_gb'] . ' GB'
+                . (!empty($pkg['cpu_label']) ? ' — ' . htmlspecialchars($pkg['cpu_label']) : '') . '</p>'
+                . '<p>Provision the box manually, then mark the order active in Admin.</p>');
+        }
+    } catch (Throwable $e) { error_log('[pkg-order] dedicated notify: ' . $e->getMessage()); }
+
+    error_log('[pkg-order] DEDICATED order #'.$order_id.' user='.$user['id'].' pkg='.$package_id);
+    echo json_encode([
+        'ok'       => true,
+        'message'  => 'Order placed! Our team will set up your dedicated server and update you shortly.',
+        'pending'  => true,
+        'redirect' => BASE_URL . '/dedicated.php',
+    ]);
+    exit;
+}
+
+// ── Load Virtualizor provider (VPS path) ──────────────────────
+$prov = db()->prepare("SELECT * FROM providers WHERE id=? AND provider_type='virtualizor' LIMIT 1");
+$prov->execute([(int)$pkg['provider_id']]);
+$prov = $prov->fetch();
+if (!$prov || empty($prov['api_key'])) { $fail('Provider not configured.'); }
 
 // ── Provision on Virtualizor (mirrors api/virt-create.php) ─────
 try {
@@ -123,7 +168,8 @@ try {
     // Encrypt root password (same scheme as servers/create.php)
     $enc = base64_encode(openssl_encrypt($root_pass, 'AES-128-ECB', substr(hash('sha256', $prov['api_key']), 0, 16)));
 
-    $price_hourly  = $price > 0 ? round($price / 730, 6) : 0.0;
+    // PREPAID: hourly billing OFF (cron skips price_hourly=0); expiry governs it.
+    $price_monthly = round($price / max(1, $cycle_months), 2);
 
     $server_id = db_create_server((int)$user['id'], [
         'provider_id'        => (int)$vpsid,
@@ -140,18 +186,24 @@ try {
         'os_label'           => $pkg['os_label'] ?: (string)($vps['os_name'] ?? ''),
         'region_label'       => (string)$pkg['virt_serid'],
         'region_flag'        => 'in',
-        'price_hourly'       => $price_hourly,
-        'price_monthly'      => $price,
+        'price_hourly'       => 0.0,           // prepaid — no hourly charge
+        'price_monthly'      => $price_monthly,
         'currency'           => $currency,
         'root_password'      => $enc,
         'total_bandwidth_gb' => (int)$pkg['bandwidth_gb'],
         'used_bandwidth_gb'  => 0,
     ]);
 
+    // Mark server prepaid + set expiry (columns added by install-db.php)
+    try {
+        db()->prepare("UPDATE servers SET billing_type='prepaid', expires_at=? WHERE id=?")
+            ->execute([$expires_at, $server_id]);
+    } catch (Throwable $e) { error_log('[pkg-order] set prepaid failed: '.$e->getMessage()); }
+
     db()->prepare("UPDATE vps_package_orders SET status='active', server_id=?, vpsid=? WHERE id=?")
         ->execute([$server_id, (string)$vpsid, $order_id]);
 
-    error_log('[pkg-order] SUCCESS user='.$user['id'].' pkg='.$package_id.' server='.$server_id.' vpsid='.$vpsid);
+    error_log('[pkg-order] SUCCESS user='.$user['id'].' pkg='.$package_id.' server='.$server_id.' vpsid='.$vpsid.' expires='.$expires_at);
 
     echo json_encode([
         'ok'        => true,
