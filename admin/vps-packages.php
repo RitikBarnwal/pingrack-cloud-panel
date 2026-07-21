@@ -77,6 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
                 'ptype'        => $ptype,
                 'name'         => $name,
                 'slug'         => $slug,
+                'location'     => trim($_POST['location'] ?? ''),
+                'location_flag'=> strtolower(trim($_POST['location_flag'] ?? '')),
                 'description'  => trim($_POST['description'] ?? ''),
                 'virt_plid'    => $ptype === 'vps' ? $plid : '',
                 'virt_serid'   => $ptype === 'vps' ? $ser  : '',
@@ -222,6 +224,22 @@ function h($v): string { return htmlspecialchars((string)$v); }
                 <label class="flabel">Sort Order</label>
                 <input type="number" name="sort_order" id="f_sort" value="0">
               </div>
+              <div>
+                <label class="flabel">Location <span class="fnote">(customers pick a location first)</span></label>
+                <input name="location" id="f_loc" placeholder="e.g. Mumbai, India" list="locList">
+                <datalist id="locList">
+                  <?php
+                    try {
+                      foreach (db()->query("SELECT DISTINCT location FROM vps_packages WHERE location<>'' ORDER BY location")->fetchAll(PDO::FETCH_COLUMN) as $L)
+                        echo '<option value="'.h($L).'">';
+                    } catch (Throwable $e) {}
+                  ?>
+                </datalist>
+              </div>
+              <div>
+                <label class="flabel">Location Flag <span class="fnote">(2-letter country code, optional)</span></label>
+                <input name="location_flag" id="f_locflag" placeholder="e.g. in, us, sg, de" maxlength="2" style="text-transform:lowercase">
+              </div>
             </div>
 
             <!-- Virtualizor mapping (VPS only) -->
@@ -326,7 +344,7 @@ function h($v): string { return htmlspecialchars((string)$v); }
               <td style="font-weight:700"><?= h($p['name']) ?>
                 <div class="muted"><span class="badge <?= $is_ded ? 'badge-purple' : 'badge-blue' ?>" style="font-size:10px"><?= $is_ded ? 'Dedicated' : 'VPS' ?></span> <?= h($p['slug']) ?></div>
               </td>
-              <td><?= $is_ded ? '<span class="muted">— manual —</span>' : h($p['provider_name'] ?? '—') ?></td>
+              <td><?= $is_ded ? '<span class="muted">— manual —</span>' : h($p['provider_name'] ?? '—') ?><?php if (!empty($p['location'])): ?><div class="muted">📍 <?= h($p['location']) ?></div><?php endif; ?></td>
               <td><?= (int)$p['vcpu'] ?> <?= $is_ded?'cores':'vCPU' ?> · <?= h($p['ram_gb']) ?> GB · <?= (int)$p['disk_gb'] ?> GB</td>
               <td class="muted"><?= $enabled_cycles ? implode(', ', array_map(fn($m)=>$m.'mo', $enabled_cycles)) : '<span style="color:var(--danger)">no cycle</span>' ?></td>
               <td style="font-family:var(--mono)">₹<?= number_format((float)$p['price_inr'],0) ?> · $<?= number_format((float)$p['price_usd'],2) ?><div class="muted" style="font-size:10px">/mo</div></td>
@@ -454,6 +472,8 @@ function editPkg(p) {
   document.getElementById('f_desc').value     = p.description || '';
   document.getElementById('f_os_label').value = p.os_label || '';
   document.getElementById('f_cpu').value      = p.cpu_label || '';
+  document.getElementById('f_loc').value      = p.location || '';
+  document.getElementById('f_locflag').value  = p.location_flag || '';
   document.getElementById('f_active').checked = p.is_active == 1;
 
   setType((p.ptype === 'dedicated') ? 'dedicated' : 'vps');

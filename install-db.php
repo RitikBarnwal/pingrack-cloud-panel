@@ -85,6 +85,9 @@ $alters = [
     // package type: vps (auto-provision) or dedicated (manual, no panel)
     ['vps_packages',       'ptype',        "ALTER TABLE vps_packages ADD COLUMN ptype ENUM('vps','dedicated') NOT NULL DEFAULT 'vps' AFTER name"],
     ['vps_packages',       'cpu_label',    "ALTER TABLE vps_packages ADD COLUMN cpu_label VARCHAR(160) NOT NULL DEFAULT '' AFTER os_label"],
+    // location grouping — deploy page shows locations first, then plans within
+    ['vps_packages',       'location',     "ALTER TABLE vps_packages ADD COLUMN location VARCHAR(120) NOT NULL DEFAULT '' AFTER slug"],
+    ['vps_packages',       'location_flag',"ALTER TABLE vps_packages ADD COLUMN location_flag VARCHAR(8) NOT NULL DEFAULT '' AFTER location"],
     // servers: prepaid support so hourly cron can skip + expiry can suspend
     ['servers',            'billing_type', "ALTER TABLE servers ADD COLUMN billing_type ENUM('hourly','prepaid') NOT NULL DEFAULT 'hourly'"],
     ['servers',            'expires_at',   "ALTER TABLE servers ADD COLUMN expires_at DATETIME NULL"],

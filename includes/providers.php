@@ -15,6 +15,10 @@ declare(strict_types=1);
  */
 function get_available_provider_types(): array
 {
+    // Only these provider types are offered in the panel.
+    // (Others' folders may still exist but are intentionally not selectable.)
+    $ENABLED  = ['virtualizor', 'proxmox'];
+
     $base     = dirname(__DIR__) . '/providers/';
     // actions.php is optional (some providers use servers/actions/{type}.php instead)
     $required = ['client.php', 'servers.php', 'catalog.php', 'bootstrap.php'];
@@ -22,9 +26,8 @@ function get_available_provider_types(): array
 
     if (!is_dir($base)) return $found;
 
-    foreach (scandir($base) as $entry) {
-        if ($entry === '.' || $entry === '..') continue;
-        if (!is_dir($base . $entry))           continue;
+    foreach ($ENABLED as $entry) {
+        if (!is_dir($base . $entry)) continue;
 
         // Check all required files exist
         $complete = true;

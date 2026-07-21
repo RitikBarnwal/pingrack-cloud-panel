@@ -53,6 +53,14 @@ $cycle_names = [1=>'1 month',3=>'3 months',6=>'6 months',12=>'12 months',24=>'24
     .pk-order:hover{background:var(--primary-hover)}
     .pk-order:disabled{opacity:.6;cursor:not-allowed}
     .pk-empty{background:white;border:1.5px solid var(--border);border-radius:14px;padding:48px 20px;text-align:center;color:var(--gray-500)}
+    .loc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+    .loc-card{background:white;border:1.5px solid var(--border);border-radius:14px;padding:22px 18px;text-align:center;text-decoration:none;transition:all .16s;display:flex;flex-direction:column;align-items:center;gap:6px}
+    .loc-card:hover{border-color:var(--primary);box-shadow:0 8px 24px rgba(15,23,42,.08);transform:translateY(-2px)}
+    .loc-flag{width:44px;height:auto;border-radius:5px;box-shadow:0 1px 4px rgba(0,0,0,.15);margin-bottom:4px}
+    .loc-pin{font-size:34px;line-height:1;margin-bottom:4px}
+    .loc-name{font-size:15px;font-weight:800;color:var(--gray-900)}
+    .loc-count{font-size:12.5px;color:var(--gray-400);font-weight:600}
+    .loc-go{font-size:12.5px;color:var(--primary);font-weight:700;margin-top:6px}
     .pk-toast{position:fixed;bottom:24px;right:24px;z-index:1200;padding:13px 18px;border-radius:11px;font-size:13.5px;font-weight:700;box-shadow:0 8px 30px rgba(0,0,0,.15);transform:translateY(12px);opacity:0;transition:all .3s;pointer-events:none;max-width:360px}
     .pk-toast.show{transform:translateY(0);opacity:1}
     .pk-toast.ok{background:#0f172a;color:#fff}
@@ -91,9 +99,56 @@ $cycle_names = [1=>'1 month',3=>'3 months',6=>'6 months',12=>'12 months',24=>'24
           <h3 style="color:var(--gray-800);margin-bottom:6px">No packages available</h3>
           <p>Please check back soon.</p>
         </div>
-      <?php else: ?>
-        <div class="pk-grid">
-          <?php foreach ($packages as $p):
+      <?php else:
+        // Orderable = has at least one enabled cycle. Group by location.
+        $orderable = array_filter($packages, fn($p) => !empty($cycles[(int)$p['id']]));
+        $by_loc = [];
+        foreach ($orderable as $op) {
+            $L = trim($op['location'] ?? '') ?: 'Other';
+            $by_loc[$L]['flag']  = $op['location_flag'] ?? '';
+            $by_loc[$L]['items'][] = $op;
+        }
+        $real_locs = array_values(array_filter(array_keys($by_loc), fn($k) => $k !== 'Other'));
+        $sel = trim($_GET['location'] ?? '');
+        $show_location_grid = count($real_locs) > 0 && ($sel === '' || !isset($by_loc[$sel]));
+        $show_packages = ($sel !== '' && isset($by_loc[$sel])) ? $by_loc[$sel]['items'] : $orderable;
+      ?>
+        <?php if (!$orderable): ?>
+          <div class="pk-empty"><h3 style="color:var(--gray-800);margin-bottom:6px">No packages available</h3><p>Please check back soon.</p></div>
+
+        <?php elseif ($show_location_grid): ?>
+          <!-- ── Step 1: choose a location ── -->
+          <div style="font-size:15px;font-weight:800;color:var(--gray-900);margin-bottom:14px">Choose a location</div>
+          <div class="loc-grid">
+            <?php foreach ($by_loc as $L => $info): if ($L === 'Other') continue; $cnt = count($info['items']); ?>
+            <a class="loc-card" href="?location=<?= urlencode($L) ?>">
+              <?php if (!empty($info['flag'])): ?>
+                <img class="loc-flag" src="https://flagcdn.com/w40/<?= htmlspecialchars($info['flag']) ?>.png" onerror="this.replaceWith(document.createTextNode('📍'))">
+              <?php else: ?><div class="loc-pin">📍</div><?php endif; ?>
+              <div class="loc-name"><?= htmlspecialchars($L) ?></div>
+              <div class="loc-count"><?= $cnt ?> plan<?= $cnt == 1 ? '' : 's' ?></div>
+              <span class="loc-go">View plans →</span>
+            </a>
+            <?php endforeach; ?>
+            <?php if (isset($by_loc['Other'])): $cnt = count($by_loc['Other']['items']); ?>
+            <a class="loc-card" href="?location=Other">
+              <div class="loc-pin">🌐</div>
+              <div class="loc-name">Other</div>
+              <div class="loc-count"><?= $cnt ?> plan<?= $cnt == 1 ? '' : 's' ?></div>
+              <span class="loc-go">View plans →</span>
+            </a>
+            <?php endif; ?>
+          </div>
+
+        <?php else: ?>
+          <?php if ($sel !== ''): ?>
+          <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <a href="packages.php" class="btn btn-secondary btn-sm">← All locations</a>
+            <span style="font-size:16px;font-weight:800;color:var(--gray-900)">📍 <?= htmlspecialchars($sel) ?></span>
+          </div>
+          <?php endif; ?>
+          <div class="pk-grid">
+          <?php foreach ($show_packages as $p):
             $pcyc = $cycles[(int)$p['id']] ?? [];
             if (!$pcyc) continue; // no enabled cycle → not orderable
             // Build cycle options with per-cycle price in the user's currency
@@ -137,7 +192,8 @@ $cycle_names = [1=>'1 month',3=>'3 months',6=>'6 months',12=>'12 months',24=>'24
             </div>
           </div>
           <?php endforeach; ?>
-        </div>
+          </div>
+        <?php endif; ?>
       <?php endif; ?>
     </div>
   </div>

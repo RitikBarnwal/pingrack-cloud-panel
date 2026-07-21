@@ -107,7 +107,8 @@ function delete_server_permanently(array $srv, string $reason): void {
 cron_log('====== Billing cron started ======');
 
 // ════════════════════════════════════════════════════════════
-//  PART 1: Bill running servers + suspend on low balance
+//  PART 1: Prepaid expiry — suspend servers whose paid period ended
+//  (Hourly billing has been removed. All servers are prepaid/cycle-based.)
 // ════════════════════════════════════════════════════════════
 $running = db()->query(
     "SELECT s.*, u.wallet_balance, u.currency, u.email, u.full_name, u.username
@@ -120,98 +121,31 @@ cron_log('Running servers: ' . count($running));
 $billed = $suspended = $errors = 0;
 
 foreach ($running as $srv) {
-    $user_id   = (int)$srv['user_id'];
     $server_id = (int)$srv['id'];
-    $amount    = (float)$srv['price_hourly'];
-    $currency  = $srv['currency'];
-    $balance   = (float)$srv['wallet_balance'];
-    $sym       = $currency === 'INR' ? '₹' : '$';
 
-    // ── Prepaid (package) servers: never hourly-billed. Suspend at expiry. ──
-    if (($srv['billing_type'] ?? 'hourly') === 'prepaid') {
-        if (!empty($srv['expires_at']) && strtotime($srv['expires_at']) < time()) {
-            // Paid period ended — power down + suspend until renewal.
-            try {
-                $ph = load_provider_handler($srv);
-                if ($ph) {
-                    try { $ph['handler']->shutdown(); }
-                    catch (Throwable $e) { try { $ph['handler']->stop(); } catch (Throwable $e2) {} }
-                }
-            } catch (Throwable $e) { error_log('[billing-prepaid-expire] ' . $e->getMessage()); }
-
-            db()->prepare("UPDATE servers SET status='suspended', suspended_at=NOW() WHERE id=?")->execute([$server_id]);
-            billing_mail($srv['email'], $srv['full_name'] ?: $srv['username'],
-                APP_NAME . ' — Server Expired: ' . $srv['name'],
-                email_wrap('Server Expired', '#d97706',
-                    '<p style="font-size:15px;color:#111827">Your prepaid server <strong>' . htmlspecialchars($srv['name']) . '</strong> has reached the end of its billing period and is now suspended.</p>
-                     <p style="font-size:14px;color:#6b7280">Renew from your dashboard to bring it back online.</p>
-                     <a href="' . BASE_URL . '/servers.php" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;border-radius:8px;font-weight:700;text-decoration:none;margin-top:12px">Renew Now →</a>'));
-            cron_log("  EXPIRED prepaid server #{$server_id} ({$srv['name']})");
-            $suspended++;
-        }
-        continue; // prepaid servers are never charged hourly
-    }
-
-    // Skip if billed this hour already
-    if ($srv['last_billed_at'] && (time() - strtotime($srv['last_billed_at'])) < 3500) {
-        cron_log("  SKIP server #{$server_id} (already billed this hour)");
+    // Only prepaid servers with a past expiry are suspended. No hourly charges.
+    if (empty($srv['expires_at']) || strtotime($srv['expires_at']) >= time()) {
         continue;
     }
 
-    if ($balance < $amount) {
-        cron_log("  SUSPEND server #{$server_id} ({$srv['name']}) — low balance: {$sym}{$balance}");
-
-        // ── Real API shutdown ─────────────────────────────────
-        try {
-            $ph = load_provider_handler($srv);
-            if ($ph) {
-                // Try graceful shutdown first, fallback to stop
-                try { $ph['handler']->shutdown(); }
-                catch (Throwable $e) {
-                    try { $ph['handler']->stop(); }
-                    catch (Throwable $e2) { error_log('[billing-stop] ' . $e2->getMessage()); }
-                }
-                cron_log("    API shutdown sent for #{$server_id}");
-            }
-        } catch (Throwable $e) {
-            error_log('[billing-suspend-api] ' . $e->getMessage());
+    // Paid period ended — power down + suspend until renewal.
+    try {
+        $ph = load_provider_handler($srv);
+        if ($ph) {
+            try { $ph['handler']->shutdown(); }
+            catch (Throwable $e) { try { $ph['handler']->stop(); } catch (Throwable $e2) {} }
         }
+    } catch (Throwable $e) { error_log('[billing-prepaid-expire] ' . $e->getMessage()); }
 
-        // ── DB suspend + record timestamp ─────────────────────
-        db()->prepare("UPDATE servers SET status='suspended', suspended_at=NOW() WHERE id=?")
-           ->execute([$server_id]);
-
-        db()->prepare(
-            'INSERT INTO billing_jobs (server_id, user_id, billed_at, amount, currency, status, note)
-             VALUES (?,?,NOW(),?,?,?,?)'
-        )->execute([$server_id, $user_id, $amount, $currency, 'failed', 'Insufficient balance']);
-
-        // ── Suspend notification email ─────────────────────────
-        billing_mail($srv['email'], $srv['full_name'] ?: $srv['username'],
-            APP_NAME . ' — Server Suspended: ' . $srv['name'],
-            email_wrap('Server Suspended', '#dc2626',
-                '<p style="font-size:15px;color:#111827">Your server <strong>' . htmlspecialchars($srv['name']) . '</strong> has been suspended.</p>
-                 <p style="font-size:14px;color:#6b7280">Balance: <strong>' . $sym . number_format($balance,2) . '</strong> · Required/hr: <strong>' . $sym . number_format($amount,4) . '</strong></p>
-                 <p style="font-size:14px;color:#dc2626"><strong>⚠ Add funds within 48 hours or your server will be permanently deleted.</strong></p>
-                 <a href="' . BASE_URL . '/billing.php" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;border-radius:8px;font-weight:700;text-decoration:none;margin-top:12px">Add Funds Now →</a>'
-            )
-        );
-
-        $suspended++; continue;
-    }
-
-    // ── Deduct billing ────────────────────────────────────────
-    $ok = wallet_deduct($user_id, $amount, 'Hourly billing — ' . $srv['name'], 'server_billing', $server_id);
-    //$ok = true;
-    if ($ok) {
-        db()->prepare("UPDATE servers SET last_billed_at=NOW() WHERE id=?")->execute([$server_id]);
-        db()->prepare('INSERT INTO billing_jobs (server_id, user_id, billed_at, amount, currency, status) VALUES (?,?,NOW(),?,?,?)')
-           ->execute([$server_id, $user_id, $amount, $currency, 'success']);
-        cron_log("  BILLED server #{$server_id} ({$srv['name']}) — {$sym}{$amount}");
-        $billed++;
-    } else {
-        cron_log("  ERROR billing server #{$server_id}"); $errors++;
-    }
+    db()->prepare("UPDATE servers SET status='suspended', suspended_at=NOW() WHERE id=?")->execute([$server_id]);
+    billing_mail($srv['email'], $srv['full_name'] ?: $srv['username'],
+        APP_NAME . ' — Server Expired: ' . $srv['name'],
+        email_wrap('Server Expired', '#d97706',
+            '<p style="font-size:15px;color:#111827">Your server <strong>' . htmlspecialchars($srv['name']) . '</strong> has reached the end of its billing period and is now suspended.</p>
+             <p style="font-size:14px;color:#6b7280">Renew from your dashboard to bring it back online.</p>
+             <a href="' . BASE_URL . '/servers.php" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;border-radius:8px;font-weight:700;text-decoration:none;margin-top:12px">Renew Now →</a>'));
+    cron_log("  EXPIRED server #{$server_id} ({$srv['name']})");
+    $suspended++;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -235,9 +169,11 @@ foreach ($suspended_servers as $srv) {
     $currency    = $srv['currency'];
     $sym         = $currency === 'INR' ? '₹' : '$';
 
-    // ── Check if user topped up (5h buffer) ───────────────────
-    if ($balance >= $amount * 5) {
-        cron_log("  RESUME server #{$server_id} ({$srv['name']}) — balance restored");
+    // ── Resume only if still within the paid (prepaid) period ─────
+    // Hourly billing is removed; a suspended server comes back only when its
+    // paid period is still valid (e.g. renewed → expires_at pushed forward).
+    if (!empty($srv['expires_at']) && strtotime($srv['expires_at']) > time()) {
+        cron_log("  RESUME server #{$server_id} ({$srv['name']}) — within paid period");
 
         // Start server via provider API
         try {
@@ -247,7 +183,6 @@ foreach ($suspended_servers as $srv) {
             error_log('[billing-resume] ' . $e->getMessage());
         }
 
-        // Clear suspend tracking, reset to running
         db()->prepare("UPDATE servers SET status='starting', suspended_at=NULL, suspend_warning_sent_at=NULL WHERE id=?")
            ->execute([$server_id]);
         cron_log("    Resumed #{$server_id}");

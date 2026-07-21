@@ -120,6 +120,7 @@ $cycle_names = [1=>'1 month',3=>'3 months',6=>'6 months',12=>'12 months',24=>'24
           <div class="pk-card">
             <div class="pk-name"><?= htmlspecialchars($p['name']) ?></div>
             <?php if (!empty($p['cpu_label'])): ?><div class="pk-cpu"><?= htmlspecialchars($p['cpu_label']) ?></div><?php endif; ?>
+            <?php if (!empty($p['location'])): ?><div class="pk-cpu" style="color:var(--gray-500)">📍 <?= htmlspecialchars($p['location']) ?></div><?php endif; ?>
             <div class="pk-desc"><?= htmlspecialchars($p['description'] ?? '') ?></div>
             <ul class="pk-specs">
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg><?= (int)$p['vcpu'] ?> CPU Cores</li>
