@@ -1,0 +1,29 @@
+# Files rsync must NOT push to the live server.
+# (No --delete is used, so excluded files on the server are left untouched.)
+
+# Git / CI metadata
+.git
+.github
+.gitignore
+.deployignore
+
+# Dependencies — rebuilt on the server by `composer install`
+vendor
+composer.phar
+
+# Environment-specific — server keeps its own copy with real secrets
+includes/config.php
+.env
+
+# User uploads / runtime data — never overwrite from repo
+uploads
+
+# Logs, dumps, OS cruft
+error_log
+*.log
+*.sql
+*.zip
+.DS_Store
+
+# Temporary diagnostics
+smtp-test.php
