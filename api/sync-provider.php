@@ -52,7 +52,7 @@ try {
     }
     require_once $bootstrap;
     CloudProvider::reset();
-    $cloud = new CloudProvider($api_key);
+    $cloud = new CloudProvider($prov);
 
     // ── Step 3: Plans ─────────────────────────────────────────
     // Hetzner → admin manually adds plan IDs → sync each one

@@ -36,9 +36,9 @@ class VirtualizorActions
             $spid = (int)($server['source_provider_id'] ?? 0);
             if (!$spid) throw new RuntimeException('Virtualizor: source_provider_id missing on server record.');
             try {
-                $st = db()->prepare('SELECT api_key FROM providers WHERE id=? AND is_active=1 LIMIT 1');
+                $st = db()->prepare('SELECT * FROM providers WHERE id=? AND is_active=1 LIMIT 1');
                 $st->execute([$spid]);
-                $cred = $st->fetchColumn();
+                $cred = $st->fetch();
                 if (!$cred) throw new RuntimeException("Provider #$spid not found or inactive.");
                 $this->api = new VirtualizorClient($cred);
             } catch (Throwable $e) {

@@ -22,18 +22,54 @@ class VirtualizorClient
     public  string $base;
     public  string $enduser_base;
 
-    public function __construct(string $credJson)
+    /**
+     * Accepts EITHER:
+     *   - a providers table row (array) using columns panel_url / api_key / api_pass
+     *     (preferred — credentials stored in real MySQL columns), OR
+     *   - a legacy JSON string {"panel_url":...,"api_key":...,"api_pass":...}
+     *     kept in the api_key column (backward compatible).
+     */
+    public function __construct(string|array $creds)
     {
-        $creds = json_decode($credJson, true);
-        if (!is_array($creds)) {
-            throw new RuntimeException('Virtualizor api_key must be JSON: {"panel_url":"https://IP","api_key":"KEY","api_pass":"PASS"}');
+        // Row array from the providers table
+        if (is_array($creds)) {
+            $panel = $creds['panel_url'] ?? '';
+            $key   = $creds['api_key']   ?? '';
+            $pass  = $creds['api_pass']  ?? '';
+            // If columns are empty but api_key still holds legacy JSON, parse it.
+            if ((!$panel || !$pass) && is_string($creds['api_key'] ?? null)
+                && str_starts_with(ltrim($creds['api_key']), '{')) {
+                $j = json_decode($creds['api_key'], true);
+                if (is_array($j)) {
+                    $panel = $panel ?: ($j['panel_url'] ?? '');
+                    $key   = $j['api_key']  ?? $key;
+                    $pass  = $pass ?: ($j['api_pass'] ?? '');
+                }
+            }
+        } else {
+            // Legacy: a JSON string
+            $j = json_decode($creds, true);
+            if (!is_array($j)) {
+                throw new RuntimeException('Virtualizor credentials missing. Enter Panel URL, API Key and API Pass.');
+            }
+            $panel = $j['panel_url'] ?? '';
+            $key   = $j['api_key']  ?? '';
+            $pass  = $j['api_pass'] ?? '';
         }
-        $this->panelUrl = rtrim($creds['panel_url'] ?? '', '/');
-        $this->apiKey   = $creds['api_key']  ?? '';
-        $this->apiPass  = $creds['api_pass'] ?? '';
+
+        // Normalise panel URL: add scheme if missing, strip trailing slash + any port.
+        $panel = trim((string)$panel);
+        if ($panel !== '' && !preg_match('#^https?://#i', $panel)) {
+            $panel = 'https://' . $panel;
+        }
+        $panel = preg_replace('#:\d+$#', '', rtrim($panel, '/'));
+
+        $this->panelUrl = $panel;
+        $this->apiKey   = trim((string)$key);
+        $this->apiPass  = trim((string)$pass);
 
         if (!$this->panelUrl || !$this->apiKey || !$this->apiPass) {
-            throw new RuntimeException('Virtualizor: panel_url, api_key and api_pass required.');
+            throw new RuntimeException('Virtualizor: panel_url, api_key and api_pass are all required.');
         }
 
         // Virtualizor has TWO separate API endpoints:

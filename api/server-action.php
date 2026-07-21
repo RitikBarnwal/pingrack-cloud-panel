@@ -60,7 +60,7 @@ require_once $handler_file;
 // Connect to provider
 require_once __DIR__ . '/../providers/' . $provider_type . '/bootstrap.php';
 CloudProvider::reset();
-$cloud = new CloudProvider($prov['api_key']);
+$cloud = new CloudProvider($prov);
 
 // Instantiate handler
 $handler_class = ucfirst($provider_type) . 'Actions';

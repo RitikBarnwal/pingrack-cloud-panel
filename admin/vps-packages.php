@@ -30,7 +30,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'load') {
     try {
         require_once __DIR__ . '/../providers/virtualizor/client.php';
         require_once __DIR__ . '/../providers/virtualizor/catalog.php';
-        $client = new VirtualizorClient($prov['api_key']);
+        $client = new VirtualizorClient($prov);
         $cat    = new VirtualizorCatalog($client);
         $plans  = array_values($cat->plans());
         $nodes  = array_values($cat->regions());

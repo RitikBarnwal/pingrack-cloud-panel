@@ -22,13 +22,17 @@ function get_provider(int $id): ?array {
     $s->execute([$id]); return $s->fetch() ?: null;
 }
 function save_provider(array $d, ?int $id=null): int {
+    // Virtualizor creds now live in real columns (panel_url/api_key/api_pass).
+    // Proxmox keeps its 4-field JSON in api_key. Both are passed through here.
+    $panel = $d['panel_url'] ?? '';
+    $pass  = $d['api_pass']  ?? '';
     if ($id) {
-        db()->prepare('UPDATE providers SET display_name=?,api_key=?,margin_pct=?,is_active=?,currency_base=?,provider_type=? WHERE id=?')
-           ->execute([$d['display_name'],$d['api_key'],$d['margin_pct'],$d['is_active']??1,strtoupper($d['currency_base']??'EUR'),$d['provider_type']??'virtualizor',$id]);
+        db()->prepare('UPDATE providers SET display_name=?,api_key=?,panel_url=?,api_pass=?,margin_pct=?,is_active=?,currency_base=?,provider_type=? WHERE id=?')
+           ->execute([$d['display_name'],$d['api_key'],$panel,$pass,$d['margin_pct'],$d['is_active']??1,strtoupper($d['currency_base']??'EUR'),$d['provider_type']??'virtualizor',$id]);
         return $id;
     }
-    db()->prepare('INSERT INTO providers (slug,display_name,api_key,margin_pct,currency_base,is_active,provider_type) VALUES(?,?,?,?,?,?,?)')
-       ->execute([$d['slug'],$d['display_name'],$d['api_key'],$d['margin_pct']??0,strtoupper($d['currency_base']??'EUR'),$d['is_active']??1,$d['provider_type']??'virtualizor']);
+    db()->prepare('INSERT INTO providers (slug,display_name,api_key,panel_url,api_pass,margin_pct,currency_base,is_active,provider_type) VALUES(?,?,?,?,?,?,?,?,?)')
+       ->execute([$d['slug'],$d['display_name'],$d['api_key'],$panel,$pass,$d['margin_pct']??0,strtoupper($d['currency_base']??'EUR'),$d['is_active']??1,$d['provider_type']??'virtualizor']);
     return (int)db()->lastInsertId();
 }
 function mark_provider_synced(int $id, bool $ok, string $note=''): void {

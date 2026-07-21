@@ -124,7 +124,7 @@ if (!$prov || empty($prov['api_key'])) { $fail('Provider not configured.'); }
 // ── Provision on Virtualizor (mirrors api/virt-create.php) ─────
 try {
     require_once __DIR__ . '/../providers/virtualizor/client.php';
-    $client = new VirtualizorClient($prov['api_key']);
+    $client = new VirtualizorClient($prov);
 
     $root_pass = bin2hex(random_bytes(8)) . 'V!1';
     $name = $hostname !== ''

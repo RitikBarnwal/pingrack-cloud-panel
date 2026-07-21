@@ -82,7 +82,7 @@ try {
     require_once __DIR__ . '/../providers/virtualizor/client.php';
     require_once __DIR__ . '/../providers/virtualizor/servers.php';
 
-    $client  = new VirtualizorClient($prov['api_key']);
+    $client  = new VirtualizorClient($prov);
     $servers = new VirtualizorServers($client);
 
     // Fetch VPS details from Virtualizor

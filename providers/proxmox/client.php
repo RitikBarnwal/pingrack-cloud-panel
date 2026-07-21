@@ -29,8 +29,13 @@ class ProxmoxClient
     public  string $defaultNode;
     public  string $base;
 
-    public function __construct(string $credJson)
+    public function __construct(string|array $credJson)
     {
+        // Accept a providers table row (array) or a legacy JSON string.
+        // Proxmox keeps its 4-field credentials as JSON in the api_key column.
+        if (is_array($credJson)) {
+            $credJson = (string)($credJson['api_key'] ?? '');
+        }
         $creds = json_decode($credJson, true);
         if (!is_array($creds)) {
             throw new RuntimeException('Proxmox api_key must be JSON: {"host":"https://IP:8006","token_id":"user@realm!name","token_secret":"secret","node":"pve"}');

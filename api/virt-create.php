@@ -117,7 +117,7 @@ if ($prov_type === 'vultr') {
     try {
         require_once __DIR__ . '/../providers/vultr/bootstrap.php';
         CloudProvider::reset();
-        $cloud = new CloudProvider($prov['api_key']);
+        $cloud = new CloudProvider($prov);
 
         $root_pass = bin2hex(random_bytes(8)) . 'Vu!';
 
@@ -216,7 +216,7 @@ try {
     require_once __DIR__ . '/../providers/virtualizor/client.php';
     require_once __DIR__ . '/../providers/virtualizor/servers.php';
 
-    $client  = new VirtualizorClient($prov['api_key']);
+    $client  = new VirtualizorClient($prov);
     $servers = new VirtualizorServers($client);
 
     // Generate root password

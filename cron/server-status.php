@@ -85,7 +85,7 @@ foreach ($groups as $prov_id => $group_servers) {
 
         require_once $bootstrap;
         CloudProvider::reset();
-        $cloud = new CloudProvider($provider['api_key']);
+        $cloud = new CloudProvider($provider);
 
         clog("  Provider #{$prov_id} [{$provider['display_name']}] — " . count($group_servers) . " server(s)");
 

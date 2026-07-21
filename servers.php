@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
                         if (file_exists($bs)) {
                             require_once $bs;
                             CloudProvider::reset();
-                            $cloud_claim = new CloudProvider($provider['api_key']);
+                            $cloud_claim = new CloudProvider($provider);
                             $vps_data = $cloud_claim->servers->get((int)$claim['vps_id']);
                         }
                     }

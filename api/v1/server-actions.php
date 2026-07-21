@@ -63,7 +63,7 @@ if (!file_exists($handler_file)) api_error("No action handler for provider '{$pr
 require_once $handler_file;
 require_once __DIR__ . '/../../providers/' . $prov_type . '/bootstrap.php';
 CloudProvider::reset();
-$cloud   = new CloudProvider($prov['api_key']);
+$cloud   = new CloudProvider($prov);
 $handler = new HetznerActions($cloud, $server);
 
 try {

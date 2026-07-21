@@ -480,6 +480,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 save_provider([
                     'display_name'  => trim($_POST['display_name'] ?? ''),
                     'api_key'       => trim($_POST['api_key'] ?? '') ?: $prov['api_key'],
+                    'panel_url'     => trim($_POST['panel_url'] ?? ($prov['panel_url'] ?? '')),
+                    'api_pass'      => trim($_POST['api_pass'] ?? '') ?: ($prov['api_pass'] ?? ''),
                     'margin_pct'    => (float)($_POST['margin_pct'] ?? 0),
                     'currency_base' => strtoupper(trim($_POST['currency_base'] ?? 'EUR')),
                     'is_active'     => (int)($_POST['is_active'] ?? 1),
@@ -516,6 +518,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'slug'          => $slug,
                     'display_name'  => $name,
                     'api_key'       => $key,
+                    'panel_url'     => trim($_POST['panel_url'] ?? ''),
+                    'api_pass'      => trim($_POST['api_pass'] ?? ''),
                     'margin_pct'    => (float)($_POST['margin_pct'] ?? 0),
                     'currency_base' => strtoupper(trim($_POST['currency_base'] ?? 'EUR')),
                     'is_active'     => (int)($_POST['is_active'] ?? 1),
@@ -3302,10 +3306,14 @@ if ($sel_tid) {
         <div class="form-row full">
           <div><label class="flabel">Display Name</label><input name="display_name" id="epp_name" class="form-control" required></div>
         </div>
+        <div class="form-row" id="epp_virt_fields">
+          <div><label class="flabel">Panel URL <span style="font-weight:400;color:#94a3b8">(Virtualizor)</span></label><input name="panel_url" id="epp_panel" class="form-control" placeholder="https://your-panel-ip" style="font-family:monospace"></div>
+          <div><label class="flabel">API Pass <span style="font-weight:400;color:#94a3b8">(Virtualizor)</span></label><input name="api_pass" id="epp_pass" class="form-control" placeholder="Leave blank to keep existing" style="font-family:monospace"></div>
+        </div>
         <div class="form-row full">
           <div>
             <label class="flabel">API Key <span>(leave blank to keep existing)</span></label>
-            <textarea name="api_key" id="epp_key" class="form-control" placeholder="Paste new key or leave blank" style="font-family:monospace" rows="4"></textarea>
+            <textarea name="api_key" id="epp_key" class="form-control" placeholder="Virtualizor API key (or Proxmox JSON) — blank to keep existing" style="font-family:monospace" rows="3"></textarea>
             <div id="epp_key_hint" style="display:none;margin-top:6px;padding:8px 10px;background:#0d1117;border-radius:6px;font-family:monospace;font-size:11px;color:#3fb950;white-space:pre;line-height:1.6"></div>
           </div>
         </div>
@@ -3365,10 +3373,15 @@ if ($sel_tid) {
         <div class="form-row full">
           <div><label class="flabel">Display Name</label><input name="display_name" id="app_name" class="form-control" placeholder="e.g. My Virtualizor Cloud" required></div>
         </div>
+        <!-- Virtualizor: separate credential columns -->
+        <div class="form-row" id="app_virt_fields">
+          <div><label class="flabel">Panel URL <span style="font-weight:400;color:#94a3b8">(Virtualizor)</span></label><input name="panel_url" id="app_panel" class="form-control" placeholder="https://your-panel-ip" style="font-family:monospace"></div>
+          <div><label class="flabel">API Pass <span style="font-weight:400;color:#94a3b8">(Virtualizor)</span></label><input name="api_pass" id="app_pass" class="form-control" placeholder="API password" style="font-family:monospace"></div>
+        </div>
         <div class="form-row full">
           <div>
-            <label class="flabel">API Key / Credentials</label>
-            <textarea name="api_key" id="app_key" class="form-control" placeholder="Paste API key or JSON credentials" style="font-family:monospace" rows="5"></textarea>
+            <label class="flabel" id="app_key_label">API Key</label>
+            <textarea name="api_key" id="app_key" class="form-control" placeholder="Virtualizor API key (or Proxmox JSON credentials)" style="font-family:monospace" rows="3"></textarea>
             <div id="app_key_hint" style="display:none;margin-top:6px;padding:8px 10px;background:#0d1117;border-radius:6px;font-family:monospace;font-size:11px;color:#3fb950;white-space:pre;line-height:1.6"></div>
           </div>
         </div>
@@ -3597,9 +3610,13 @@ function openEditPlan(plan, regions) {
 /* ── Edit provider ─────────────────────────────────────────── */
 function openEditProv(prov) {
   document.getElementById('epp_id').value    = prov.id;
-  document.getElementById('epp_type').value  = prov.provider_type || 'hetzner';
+  document.getElementById('epp_type').value  = prov.provider_type || 'virtualizor';
   document.getElementById('epp_name').value  = prov.display_name;
   document.getElementById('epp_key').value   = '';
+  document.getElementById('epp_panel').value = prov.panel_url || '';
+  document.getElementById('epp_pass').value  = '';   // blank = keep existing
+  // Virtualizor uses panel/key/pass columns; Proxmox uses a JSON blob in api_key
+  document.getElementById('epp_virt_fields').style.display = (prov.provider_type === 'proxmox') ? 'none' : '';
   document.getElementById('epp_cur').value   = prov.currency_base || 'EUR';
   document.getElementById('epp_active').value= prov.is_active;
 
@@ -3644,8 +3661,11 @@ function openAddProv() {
 function appUpdateHint() {
   var ptype = (document.getElementById('app_type').value || '').toLowerCase();
   var hint  = document.getElementById('app_key_hint');
+  // Virtualizor uses Panel URL + API Key + API Pass columns; Proxmox uses a JSON blob.
+  document.getElementById('app_virt_fields').style.display = (ptype === 'proxmox') ? 'none' : '';
+  document.getElementById('app_key_label').textContent = (ptype === 'proxmox') ? 'Credentials (JSON)' : 'API Key';
   // Default base currency guess per type
-  var curGuess = {virtualizor:'INR', digitalocean:'USD', vultr:'USD', linode:'USD', hetzner:'EUR', contabo:'EUR', proxmox:'INR'};
+  var curGuess = {virtualizor:'INR', proxmox:'INR'};
   if (curGuess[ptype]) document.getElementById('app_cur').value = curGuess[ptype];
   if (PROV_CRED_HINTS[ptype]) {
     hint.textContent = PROV_CRED_HINTS[ptype];

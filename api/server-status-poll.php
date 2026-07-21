@@ -43,7 +43,7 @@ try {
     $provider_type = strtolower($prov['provider_type'] ?? 'virtualizor');
     require_once __DIR__ . '/../providers/' . $provider_type . '/bootstrap.php';
     CloudProvider::reset();
-    $cloud = new CloudProvider($prov['api_key']);
+    $cloud = new CloudProvider($prov);
 
     // Provider-specific status fetch
     $total_bw = 0;

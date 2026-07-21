@@ -17,9 +17,9 @@ class CloudProvider
 
     private static array $instances = [];
 
-    public function __construct(string $credJson)
+    public function __construct(string|array $creds)
     {
-        $client        = new VirtualizorClient($credJson);
+        $client        = new VirtualizorClient($creds);
         $this->servers = new VirtualizorServers($client);
         $this->catalog = new VirtualizorCatalog($client);
     }

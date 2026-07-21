@@ -48,7 +48,7 @@ function load_provider_handler(array $srv): ?array {
     require_once $bp;
     require_once $hf;
     CloudProvider::reset();
-    $cloud = new CloudProvider($prov['api_key']);
+    $cloud = new CloudProvider($prov);
     $cls   = ucfirst($ptype) . 'Actions';
     if (!class_exists($cls)) return null;
 

@@ -108,6 +108,9 @@ $alters = [
     // orders: which cycle + when it expires
     ['vps_package_orders', 'cycle_months', "ALTER TABLE vps_package_orders ADD COLUMN cycle_months SMALLINT UNSIGNED NOT NULL DEFAULT 1"],
     ['vps_package_orders', 'expires_at',   "ALTER TABLE vps_package_orders ADD COLUMN expires_at DATETIME NULL"],
+    // provider API creds in real columns (instead of a JSON blob in api_key)
+    ['providers',          'panel_url',    "ALTER TABLE providers ADD COLUMN panel_url VARCHAR(255) NOT NULL DEFAULT '' AFTER api_key"],
+    ['providers',          'api_pass',     "ALTER TABLE providers ADD COLUMN api_pass VARCHAR(255) NOT NULL DEFAULT '' AFTER panel_url"],
 ];
 
 // ── Run + report ──────────────────────────────────────────────
@@ -155,6 +158,34 @@ foreach ($alters as [$table, $col, $sql]) {
     } catch (Throwable $e) {
         $results[$label] = ['err', $e->getMessage()];
     }
+}
+
+// ── Migrate legacy JSON creds → panel_url / api_key / api_pass columns ──
+try {
+    if ($colExists('providers', 'panel_url') && $colExists('providers', 'api_pass')) {
+        $rows = $pdo->query("SELECT id, api_key, panel_url, api_pass FROM providers")->fetchAll();
+        $migrated = 0;
+        foreach ($rows as $r) {
+            // Only migrate rows that still have JSON in api_key and empty columns
+            $ak = (string)$r['api_key'];
+            if (($r['panel_url'] === '' || $r['api_pass'] === '') && str_starts_with(ltrim($ak), '{')) {
+                $j = json_decode($ak, true);
+                if (is_array($j) && !empty($j['api_key'])) {
+                    $pdo->prepare("UPDATE providers SET panel_url=?, api_key=?, api_pass=? WHERE id=?")
+                        ->execute([
+                            $j['panel_url'] ?? '',
+                            $j['api_key']   ?? '',
+                            $j['api_pass']  ?? '',
+                            $r['id'],
+                        ]);
+                    $migrated++;
+                }
+            }
+        }
+        $results['providers.creds_migration'] = ['ok', $migrated ? "$migrated JSON credential row(s) split into columns" : 'nothing to migrate'];
+    }
+} catch (Throwable $e) {
+    $results['providers.creds_migration'] = ['err', $e->getMessage()];
 }
 ?><!doctype html>
 <html lang="en"><head>

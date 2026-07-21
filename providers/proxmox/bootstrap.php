@@ -15,9 +15,9 @@ class CloudProvider
 
     private static array $instances = [];
 
-    public function __construct(string $credJson)
+    public function __construct(string|array $creds)
     {
-        $client        = new ProxmoxClient($credJson);
+        $client        = new ProxmoxClient($creds);
         $this->servers = new ProxmoxServers($client);
         $this->catalog = new ProxmoxCatalog($client);
     }

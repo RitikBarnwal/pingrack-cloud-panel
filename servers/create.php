@@ -275,7 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
             }
             require_once $bootstrap_file;
             CloudProvider::reset();
-            $cloud = new CloudProvider($prov_row['api_key']);
+            $cloud = new CloudProvider($prov_row);
 
             $provider_ssh_ids = [];
             foreach ($ssh_key_ids as $kid) {
