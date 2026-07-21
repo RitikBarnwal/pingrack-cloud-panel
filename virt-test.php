@@ -46,22 +46,32 @@ function resolve_creds(array $prov): array {
 $results = [];
 if ($prov) {
     [$panel, $key, $pass] = resolve_creds($prov);
-    $is_https = str_starts_with($panel, 'https');
-    $adminPort = $is_https ? 4085 : 4084;
+    // Strip scheme to try both http and https cleanly
+    $hostOnly = preg_replace('#^https?://#i', '', $panel);
 
-    foreach (['plans', 'servers'] as $act) {
-        $url = $panel . ':' . $adminPort . '/index.php?api=json&apikey=' . urlencode($key) . '&apipass=' . urlencode($pass) . '&act=' . $act;
-        $shown = str_replace([urlencode($key), urlencode($pass)], ['<APIKEY>', '<APIPASS>'], $url);
+    // Probe every plausible Virtualizor endpoint for act=plans, so we can see
+    // which scheme+port actually returns JSON on THIS panel.
+    $probes = [
+        ['https', 4085, 'Admin API (SSL)'],
+        ['http',  4084, 'Admin API (non-SSL)'],
+        ['https', 4083, 'Enduser API (SSL)'],
+        ['http',  4082, 'Enduser API (non-SSL)'],
+    ];
+
+    foreach ($probes as [$scheme, $port, $label]) {
+        $base = $scheme . '://' . $hostOnly . ':' . $port . '/index.php';
+        $url  = $base . '?api=json&apikey=' . urlencode($key) . '&apipass=' . urlencode($pass) . '&act=plans';
+        $shown = $scheme . '://' . $hostOnly . ':' . $port . '/index.php?api=json&apikey=<KEY>&apipass=<PASS>&act=plans';
 
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 20,
-            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_CONNECTTIMEOUT => 8,
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_FOLLOWLOCATION => false,   // don't follow to a login page
             CURLOPT_USERAGENT => 'Mozilla/5.0',
         ]);
         $t0   = microtime(true);
@@ -72,16 +82,15 @@ if ($prov) {
         curl_close($ch);
 
         $json = json_decode((string)$raw, true);
-        $planKeys = is_array($json) ? array_keys($json) : [];
-        $results[$act] = [
-            'url'    => $shown,
-            'http'   => $code,
-            'ms'     => $ms,
+        $results["$label — :$port"] = [
+            'url'      => $shown,
+            'http'     => $code,
+            'ms'       => $ms,
             'curl_err' => $err,
             'is_html'  => str_starts_with(ltrim((string)$raw), '<'),
             'json_ok'  => is_array($json),
-            'top_keys' => $planKeys,
-            'raw'      => substr((string)$raw, 0, 2500),
+            'top_keys' => is_array($json) ? array_keys($json) : [],
+            'raw'      => substr((string)$raw, 0, 1500),
         ];
     }
 }
