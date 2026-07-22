@@ -115,6 +115,29 @@ if ($ptype === 'dedicated') {
     exit;
 }
 
+// ── Provisioning mode: automatic (instant) or manual (admin processes) ──
+// Admin setting 'vps_provision_mode' = 'auto' (default) | 'manual'.
+if (get_setting('vps_provision_mode', 'auto') === 'manual') {
+    // Leave the order pending in the admin Orders queue; notify admin.
+    try {
+        require_once __DIR__ . '/../includes/mailer.php';
+        $admin_email = get_setting('company_email', '') ?: get_setting('SMTP_FROM', '');
+        if ($admin_email && function_exists('send_mail')) {
+            send_mail($admin_email, 'Admin', 'New VPS order #' . $order_id . ' — awaiting provisioning',
+                '<p>New VPS order <strong>#' . $order_id . '</strong> from ' . htmlspecialchars($user['email'])
+                . ' for <strong>' . htmlspecialchars($pkg['name']) . '</strong> (' . $cycle_label . ', ' . $sym . number_format($price,2) . ').</p>'
+                . '<p>Process it in Admin → Orders.</p>');
+        }
+    } catch (Throwable $e) { error_log('[pkg-order] manual notify: '.$e->getMessage()); }
+    echo json_encode([
+        'ok'      => true,
+        'message' => 'Order placed! Your server will be set up shortly and appear in your dashboard.',
+        'pending' => true,
+        'redirect'=> BASE_URL . '/servers.php',
+    ]);
+    exit;
+}
+
 // ── Load Virtualizor provider (VPS path) ──────────────────────
 $prov = db()->prepare("SELECT * FROM providers WHERE id=? AND provider_type='virtualizor' LIMIT 1");
 $prov->execute([(int)$pkg['provider_id']]);

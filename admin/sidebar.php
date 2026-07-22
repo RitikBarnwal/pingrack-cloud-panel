@@ -25,6 +25,7 @@ $pc_career   = adm_pending("SELECT COUNT(*) FROM career_applications WHERE statu
 $pc_legal    = adm_pending("SELECT COUNT(*) FROM legal_pages WHERE is_published=0");
 $pc_kyc      = adm_pending("SELECT COUNT(*) FROM kyc_requests WHERE status='pending'");
 $pc_callback = adm_pending("SELECT COUNT(*) FROM callback_requests WHERE status='pending'");
+$pc_orders   = adm_pending("SELECT COUNT(*) FROM vps_package_orders WHERE status='pending'");
 // Aggregate for the collapsed "Extra" group header
 $pc_extra    = $pc_career + $pc_legal;
 
@@ -144,6 +145,11 @@ $extra_open  = in_array($__cur, $extra_pages) || in_array($__tab, $extra_tabs);
 
     <!-- Billing & Support -->
     <div class="adm-nav-lbl">Billing &amp; Support</div>
+    <a href="<?= BASE_URL ?>/admin/orders.php" class="adm-link <?= adm_active(['orders.php']) ?>">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+      Orders
+      <?php if ($pc_orders > 0): ?><span class="adm-n-badge"><?= $pc_orders ?></span><?php endif; ?>
+    </a>
     <a href="<?= BASE_URL ?>/admin/index.php?tab=revenue" class="adm-link <?= adm_active([], ['revenue']) ?>">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
       Revenue Analytics

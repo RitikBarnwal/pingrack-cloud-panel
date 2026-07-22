@@ -17,7 +17,7 @@ $tab = $_GET['tab'] ?? 'whatsapp';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ?? '')) {
     $allowed = [
         'primary_color','primary_color_hover','site_name','company_name',
-        'frontend_enabled',
+        'frontend_enabled','vps_provision_mode',
         'organization_allowed','user_registration_allowed','company_email','company_phone',
         'company_address','company_city','company_state','company_country','company_pin',
         'company_gstin','gst_rate','gst_enabled','company_gst_state',
@@ -318,6 +318,14 @@ function s(string $key, string $default = ''): string {
                   <option value="0" <?= get_setting('frontend_enabled','1')==='0'?'selected':'' ?>>Disabled — go straight to login (panel-only)</option>
                 </select>
                 <span style="font-size:11px;color:#94a3b8">Disable when this install is a management/backup panel only.</span>
+              </div>
+              <div>
+                <label class="flabel">VPS Provisioning</label>
+                <select name="vps_provision_mode" class="form-control">
+                  <option value="auto"   <?= get_setting('vps_provision_mode','auto')==='auto'?'selected':'' ?>>Automatic — provision instantly on order</option>
+                  <option value="manual" <?= get_setting('vps_provision_mode','auto')==='manual'?'selected':'' ?>>Manual — queue in Admin → Orders for you to process</option>
+                </select>
+                <span style="font-size:11px;color:#94a3b8">Manual sends every VPS order to the Orders page (like dedicated).</span>
               </div>
               <div><label class="flabel">Site Favicon URL <span>(optional)</span></label><input name="site_favicon" class="form-control" value="<?= s('site_favicon') ?>" placeholder="https://..."></div>
               <div><label class="flabel">Site Logo URL (Light) <span>(optional)</span></label><input name="site_logo" class="form-control" value="<?= s('site_logo') ?>" placeholder="https://..."></div>
