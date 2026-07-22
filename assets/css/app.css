@@ -18,7 +18,7 @@
   --danger-bg:#fef2f2;
   --warning:  #d97706;
   --warning-bg:#fffbeb;
-  --gray-50:  #f7f8fa;
+  --gray-50:  #f9fafb;
   --gray-100: #f3f4f6;
   --gray-200: #e5e7eb;
   --gray-300: #d1d5db;
@@ -64,7 +64,7 @@ input, button, select, textarea { font-family: inherit; }
   width: 100%;
 }
 
-/* ── Sidebar (icon-rail + white nav) ─────────────────────── */
+/* ── Sidebar ─────────────────────────────────────────────── */
 .sidebar {
   position: fixed;
   top: 0; left: 0;
@@ -72,58 +72,16 @@ input, button, select, textarea { font-family: inherit; }
   width: var(--sidebar-w);
   background: var(--white);
   border-right: 1px solid var(--border);
-  display: flex;              /* rail | inner */
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
   z-index: 50;
   transition: transform .28s ease;
 }
-
-/* Far-left dark icon rail */
-.icon-rail {
-  width: 60px; flex-shrink: 0;
-  background: #111827;
-  display: flex; flex-direction: column; align-items: center;
-  padding: 12px 0;
-  gap: 8px;
-}
-.rail-top { padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.08); }
-.rail-app { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,.06); display: flex; align-items: center; justify-content: center; }
-.rail-app svg { width: 19px; height: 19px; }
-.rail-mods { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 9px; overflow-y: auto; scrollbar-width: none; }
-.rail-mods::-webkit-scrollbar { display: none; }
-.rail-btn {
-  width: 38px; height: 38px; border-radius: 11px;
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; background: var(--c, #3b82f6);
-  opacity: .55; transition: opacity .15s, transform .15s;
-  position: relative;
-}
-.rail-btn svg { width: 18px; height: 18px; }
-.rail-btn:hover { opacity: .9; transform: translateY(-1px); }
-.rail-btn.on { opacity: 1; box-shadow: 0 0 0 2px rgba(255,255,255,.18); }
-.rail-bottom { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 6px; }
-.rail-util { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.5); background: transparent; border: none; cursor: pointer; transition: all .14s; }
-.rail-util:hover { color: #fff; background: rgba(255,255,255,.08); }
-.rail-util svg { width: 17px; height: 17px; }
-.rail-avatar { position: relative; width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; margin-top: 2px; text-decoration: none; }
-.rail-dot { position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-radius: 50%; background: #22c55e; border: 2px solid #111827; }
-
-/* White nav column */
-.sidebar-inner { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--white); overflow: hidden; }
-
-/* Search box */
-.sidebar-search {
-  margin: 12px 12px 6px;
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 11px; border: 1px solid var(--border); border-radius: 9px;
-  background: #f8fafc;
-}
-.sidebar-search svg { width: 15px; height: 15px; color: var(--gray-400); flex-shrink: 0; }
-.sidebar-search input { flex: 1; min-width: 0; border: none; background: transparent; outline: none; font-size: 13px; color: var(--gray-800); font-family: inherit; }
-.sidebar-search .kbd { font-size: 10.5px; font-weight: 700; color: var(--gray-400); background: #fff; border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; flex-shrink: 0; }
-
 .sidebar-logo {
-  padding: 14px 16px 12px;
+  padding: 16px 18px 14px;
   display: flex; align-items: center; gap: 9px;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 .logo-mark {
@@ -141,15 +99,14 @@ input, button, select, textarea { font-family: inherit; }
   color: var(--gray-400); padding: 10px 10px 5px;
 }
 .nav-link {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 11px; border-radius: 9px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: var(--radius-sm);
   color: var(--gray-600); font-size: 13.5px; font-weight: 500;
-  transition: all .12s; margin-bottom: 2px; cursor: pointer;
+  transition: all .12s; margin-bottom: 1px; cursor: pointer;
 }
-.nav-link:hover { background: #f1f5f9; color: var(--gray-900); }
-.nav-link.active { background: #f1f5f9; color: var(--gray-900); font-weight: 700; }
-.nav-link.active svg { color: var(--gray-900); }
-.nav-link svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--gray-400); }
+.nav-link:hover { background: var(--gray-100); color: var(--gray-900); }
+.nav-link.active { background: hsl(0 0% 9% / 0.12); color: var(--primary); font-weight: 600; }
+.nav-link svg { width: 16px; height: 16px; flex-shrink: 0; }
 .sidebar-footer {
   padding: 12px 14px;
   border-top: 1px solid var(--border);
@@ -295,20 +252,6 @@ input[readonly],input:disabled {background: #f4f4f4;}
 .btn-full { width: 100%; }
 .btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
 .btn svg { width: 14px; height: 14px; }
-
-/* ── SparrowHost design system: black primary CTA ────────────
-   Deploy buttons are redefined inline per page with the brand colour;
-   force them to solid black here (overrides those inline <style> rules). */
-.btn-deploy { background: #111827 !important; box-shadow: none !important; border-radius: 10px !important; }
-.btn-deploy:hover { background: #1f2937 !important; }
-
-/* Stat cards: cleaner card + optional tinted icon box (opt-in via .stat-ico) */
-.stat-card { border-radius: 14px; padding: 16px 18px; box-shadow: none; }
-.stat-card .stat-ico { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; }
-.stat-card .stat-ico svg { width: 18px; height: 18px; }
-.stat-value { font-size: 24px; }
-.list-card { border-radius: 14px; box-shadow: none; }
-.topbar-title { font-size: 15px; font-weight: 800; }
 
 /* ── Forms ───────────────────────────────────────────────── */
 .form-group { margin-bottom: 15px; }
