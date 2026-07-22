@@ -105,14 +105,6 @@ function inject_global_head(): void {
     if (trim($custom_css)) echo $custom_css . "\n";
     if (trim($custom_js))  echo $custom_js  . "\n";
 
-    // GA4
-    $ga_id = get_setting('ga_measurement_id', '');
-    if (get_setting('ga_enabled','0')==='1' && $ga_id && preg_match('/^G-[A-Z0-9]+$/', $ga_id)) {
-        $sid = htmlspecialchars($ga_id, ENT_QUOTES, 'UTF-8');
-        echo "<script async src=\"https://www.googletagmanager.com/gtag/js?id={$sid}\"></script>\n";
-        echo "<script>\nwindow.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','{$sid}');\n</script>\n";
-    }
-
     // Cookie consent
     if (get_setting('cookie_consent_enabled','1')==='1') {
         $p  = get_setting('cookie_consent_position','bottom');
