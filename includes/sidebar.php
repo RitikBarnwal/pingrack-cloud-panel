@@ -39,15 +39,56 @@ function exitImpersonate() {
 <?php endif; ?>
 
 <aside class="sidebar" id="sidebar">
+  <!-- ── Far-left icon rail ─────────────────────────────────── -->
+  <div class="icon-rail">
+    <div class="rail-top">
+      <a href="<?= BASE_URL ?>/dashboard.php" class="rail-app" title="<?= htmlspecialchars($app_name) ?>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      </a>
+    </div>
+    <div class="rail-mods">
+      <?php
+        $rail = [
+          ['dashboard.php','Dashboard','#3b82f6','<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'],
+          ['servers.php','Servers','#8b5cf6','<rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>'],
+          ['storage.php','Storage','#14b8a6','<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>'],
+          ['packages.php','Deploy','#ec4899','<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>'],
+          ['dns.php','DNS','#f59e0b','<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>'],
+          ['billing.php','Billing','#22c55e','<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>'],
+        ];
+        foreach ($rail as [$pg,$t,$col,$path]):
+          $on = ($current_page === $pg) ? ' on' : '';
+      ?>
+      <a href="<?= BASE_URL ?>/<?= $pg ?>" class="rail-btn<?= $on ?>" title="<?= $t ?>" style="--c:<?= $col ?>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><?= $path ?></svg>
+      </a>
+      <?php endforeach; ?>
+    </div>
+    <div class="rail-bottom">
+      <button class="rail-util" title="Toggle theme" onclick="return false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      <a href="<?= BASE_URL ?>/kb/" class="rail-util" title="Help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></a>
+      <a href="<?= BASE_URL ?>/profile.php" class="rail-util" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></a>
+      <a href="<?= BASE_URL ?>/profile.php" class="rail-avatar" title="<?= $fname ?>"><?= strtoupper(substr($user['full_name'] ?: $user['username'], 0, 1)) ?><span class="rail-dot"></span></a>
+    </div>
+  </div>
+
+  <!-- ── White nav column ───────────────────────────────────── -->
+  <div class="sidebar-inner">
   <div class="sidebar-logo">
     <?php if (!empty(get_setting('site_logo', ''))) : ?>
-    <img src="<?= htmlspecialchars(get_setting('site_logo', '')) ?>" alt="Logo" style="width: 200px;">
+    <img src="<?= htmlspecialchars(get_setting('site_logo', '')) ?>" alt="Logo" style="max-width: 140px;height:auto">
 <?php else: ?>
     <div class="logo-mark">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
     </div>
     <span class="logo-text"><?= $app_name ?></span>
 <?php endif; ?>
+  </div>
+
+  <div class="sidebar-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="Search" aria-label="Search">
+    <span class="kbd">⌘K</span>
   </div>
 
   <nav class="sidebar-nav">
@@ -191,6 +232,7 @@ function exitImpersonate() {
       Sign Out
     </a>
   </div>
+  </div><!-- /.sidebar-inner -->
 </aside>
 
 <!-- ── User sidebar: collapsible group + active-link polish ─────── -->
