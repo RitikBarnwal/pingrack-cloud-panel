@@ -166,10 +166,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
 }
 
 // ── Counts ──────────────────────────────────────────────────
-// My Servers = VPS only. Apply a type filter only if the column exists.
+// My Servers = VPS only. A server is "dedicated" if it's linked to a dedicated
+// package order (robust — works even before the server_type column exists).
+$ded_ids = [];
+try {
+    $ded_ids = db()->query(
+        "SELECT DISTINCT o.server_id FROM vps_package_orders o
+         JOIN vps_packages p ON p.id=o.package_id
+         WHERE p.ptype='dedicated' AND o.server_id IS NOT NULL"
+    )->fetchAll(PDO::FETCH_COLUMN);
+} catch (Throwable $e) {}
+// Also respect the server_type column if present.
 $has_type_col = false;
 try { foreach (db()->query("SHOW COLUMNS FROM servers LIKE 'server_type'")->fetchAll() as $c) $has_type_col = true; } catch (Throwable $e) {}
-$type_and = $has_type_col ? " AND COALESCE(server_type,'vps') <> 'dedicated'" : '';
+$excl_conds = [];
+if ($ded_ids)      $excl_conds[] = 'id NOT IN (' . implode(',', array_map('intval', $ded_ids)) . ')';
+if ($has_type_col) $excl_conds[] = "COALESCE(server_type,'vps') <> 'dedicated'";
+$type_and = $excl_conds ? ' AND ' . implode(' AND ', $excl_conds) : '';
 
 $counts = [
     'all'         => (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND deleted_at IS NULL$type_and")->fetchColumn(),
@@ -187,7 +200,7 @@ $per    = 10;
 $offset = ($page - 1) * $per;
 
 // ── Query ────────────────────────────────────────────────────
-$where  = array_values(array_filter(['user_id = ?', 'deleted_at IS NULL', ($has_type_col ? "COALESCE(server_type,'vps') <> 'dedicated'" : '')]));
+$where  = array_merge(['user_id = ?', 'deleted_at IS NULL'], $excl_conds);
 $params = [$uid];
 
 if ($filter !== 'all') {

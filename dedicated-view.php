@@ -16,20 +16,33 @@ $balance = number_format((float)$user['wallet_balance'], 2);
 
 $sid = (int)($_GET['id'] ?? 0);
 $srv = null;
+$order = null;
 try {
     $st = db()->prepare("SELECT * FROM servers WHERE id=? AND user_id=? AND deleted_at IS NULL LIMIT 1");
     $st->execute([$sid, $uid]);
     $srv = $st->fetch();
-    // Only dedicated servers belong here.
-    if ($srv && (($srv['server_type'] ?? 'vps') !== 'dedicated')) {
-        header('Location: ' . BASE_URL . '/servers.php'); exit;
-    }
 } catch (Throwable $e) {}
 
 if (!$srv) { header('Location: ' . BASE_URL . '/dedicated.php'); exit; }
 
-$months  = (int)($srv['billing_months'] ?? 1);
-$monthly = $months > 0 ? round((float)$srv['price_monthly'], 2) : (float)$srv['price_monthly'];
+// A server is "dedicated" if it's linked to a dedicated package order OR
+// tagged server_type='dedicated'. Robust even before install-db runs.
+$is_ded = (($srv['server_type'] ?? '') === 'dedicated');
+try {
+    $oq = db()->prepare(
+        "SELECT o.* FROM vps_package_orders o JOIN vps_packages p ON p.id=o.package_id
+         WHERE o.server_id=? AND p.ptype='dedicated' LIMIT 1");
+    $oq->execute([$sid]);
+    if ($order = $oq->fetch()) $is_ded = true;
+} catch (Throwable $e) {}
+
+if (!$is_ded) { header('Location: ' . BASE_URL . '/servers.php'); exit; }
+
+// Prefer the order's cycle/amount if the server columns aren't populated.
+$months  = (int)($srv['billing_months'] ?? 0) ?: (int)($order['cycle_months'] ?? 1);
+$srv_mo  = round((float)($srv['price_monthly'] ?? 0), 2);
+$monthly = $srv_mo > 0 ? $srv_mo : round((float)($order['amount'] ?? 0) / max(1, $months), 2);
+if (empty($srv['expires_at']) && !empty($order['expires_at'])) $srv['expires_at'] = $order['expires_at'];
 $cycle_names = [1=>'Monthly',3=>'Quarterly',6=>'Semi-Annual',12=>'Annual',24=>'Biennial',36=>'Triennial'];
 $cycle_lbl = $cycle_names[$months] ?? ($months . ' months');
 $status = $srv['status'] ?? 'running';
