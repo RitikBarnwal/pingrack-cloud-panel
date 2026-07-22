@@ -104,13 +104,13 @@ foreach ($packages as $p) {
     .plan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
     .plan-card{position:relative;padding:18px;background:#fff;border:1.5px solid var(--line);border-radius:13px;cursor:pointer;transition:all .13s}
     .plan-card:hover{border-color:#cbd5e1;box-shadow:0 2px 10px rgba(15,23,42,.05)}
-    .plan-card.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
-    .plan-card.on .plan-tick{display:flex}
-    .plan-tick{position:absolute;top:14px;right:14px;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px}
-    .plan-nm{font-size:15px;font-weight:800;color:var(--ink);letter-spacing:-.2px;padding-right:24px}
-    .plan-proc{display:inline-flex;align-items:center;gap:6px;margin-top:7px;font-size:12px;font-weight:700;color:#475569}
-    .plan-proc .chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--line);border-radius:6px;background:#f8fafc;font-size:11px}
-    .plan-badge{display:inline-flex;align-items:center;gap:5px;margin-top:9px;padding:3px 9px;border-radius:99px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:800}
+    .plan-card.on{border-color:var(--ink);border-width:1.8px;background:#fafafa}
+    .plan-card.on .plan-tick{display:block}
+    .plan-tick{position:absolute;top:14px;right:14px;color:var(--ink);display:none;font-size:15px;font-weight:900;line-height:1}
+    .plan-nm{font-size:14.5px;font-weight:800;color:var(--ink);letter-spacing:-.2px;padding-right:22px}
+    .plan-proc{display:inline-flex;align-items:center;gap:6px;margin-top:7px;font-size:12px;font-weight:700;color:#64748b}
+    .plan-proc .mk{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+    .ded-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;background:#ede9fe;color:#6d28d9;font-size:10.5px;font-weight:800;margin-left:6px}
     /* Processor filter pills (Step 2) */
     .proc-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
     .proc-tab{padding:7px 14px;border:1.5px solid var(--line);border-radius:99px;background:#fff;font-size:12.5px;font-weight:700;color:#64748b;cursor:pointer;transition:all .13s;display:inline-flex;align-items:center;gap:6px}
@@ -279,9 +279,11 @@ function pickLoc(el){
   document.getElementById('step-plan').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
+function procColor(proc){ return /amd|epyc|ryzen/i.test(proc)?'#ED1C24':(/intel|xeon/i.test(proc)?'#0071C5':'#64748b'); }
 function makeProcTab(val, label, on){
   var b=document.createElement('button'); b.type='button'; b.className='proc-tab'+(on?' on':''); b.setAttribute('data-proc',val);
-  b.innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>'+esc(label);
+  var mk = val==='all' ? '' : '<span class="mk" style="width:11px;height:11px;border-radius:3px;background:'+procColor(val)+'"></span>';
+  b.innerHTML = mk + esc(label);
   b.onclick=function(){ pickProc(val, b); };
   return b;
 }
@@ -296,13 +298,13 @@ function renderPlans(proc){
     var mc=minCycle(p);
     var card=document.createElement('button'); card.type='button'; card.className='plan-card';
     card.onclick=function(){ pickPlan(p,card); };
+    var cpuIco='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>';
     card.innerHTML='<div class="plan-tick">✓</div><div class="plan-nm">'+esc(p.name)+'</div>'+
-      (p.proc?'<div class="plan-proc"><span class="chip"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>'+esc(p.proc)+'</span></div>':'')+
-      '<span class="plan-badge">'+(p.vcpu)+' vCPU Dedicated</span>'+
+      (p.proc?'<div class="plan-proc"><span class="mk" style="background:'+procColor(p.proc)+'"></span>'+esc(p.proc)+'</div>':'')+
       '<ul class="plan-specs">'+
-        spec('<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/>',p.vcpu+' vCPU Cores')+
+        '<li>'+cpuIco+p.vcpu+' vCPU<span class="ded-pill">Dedicated</span></li>'+
         spec('<rect x="2" y="7" width="20" height="10" rx="2"/><line x1="6" y1="11" x2="6" y2="13"/><line x1="10" y1="11" x2="10" y2="13"/>',p.ram+' GB RAM')+
-        spec('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/>',p.disk+' GB Disk')+
+        spec('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/>',p.disk+' GB NVMe')+
         (p.bw>0?spec('<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',p.bw+' GB Bandwidth'):'')+
       '</ul>'+
       '<div class="plan-price">'+fmt(mc.price)+' <small>/ '+(CYCLE_LBL[mc.months]||mc.months+' mo')+'</small></div>';
@@ -335,10 +337,10 @@ function updateSummary(){
   rows+=row('Plan',p.name);
   rows+=row('Location',sel.loc);
   if(p.os) rows+=row('Image',p.os);
-  rows+=row('vCPU',p.vcpu+' Cores');
+  rows+=row('vCPU',p.vcpu+' Cores (Dedicated)');
   rows+=row('Memory',p.ram+' GB');
-  rows+=row('Disk',p.disk+' GB');
-  if(sel.cyc){ var mc=minCycle(p); rows+=row('Base Price',fmt(sel.cyc.price/sel.cyc.months)+'/mo'); }
+  rows+=row('Disk',p.disk+' GB NVMe');
+  if(sel.cyc){ rows+=row('Base Price',fmt(sel.cyc.price/sel.cyc.months)+'/mo'); }
   el.innerHTML=rows;
   if(sel.cyc){
     document.getElementById('sumTotal').textContent=fmt(sel.cyc.price);
