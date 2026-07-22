@@ -29,6 +29,17 @@ try {
     foreach (db()->query("SELECT * FROM package_cycles WHERE is_enabled=1 ORDER BY months")->fetchAll() as $c) {
         $cyc[(int)$c['package_id']][] = ['months'=>(int)$c['months'], 'price'=>(float)$c['price_inr']];
     }
+    // Derive a processor label from the package name/description (Virtualizor
+    // plans are named by the admin; there's no CPU-brand field in the API).
+    $proc_of = function(string $s): string {
+        $s = strtolower($s);
+        if (preg_match('/\b(amd\s*)?epyc\b/', $s))          return 'AMD EPYC';
+        if (preg_match('/\bryzen\b/', $s))                  return 'AMD Ryzen';
+        if (preg_match('/\bamd\b/', $s))                    return 'AMD';
+        if (preg_match('/\b(intel\s*)?xeon\b/', $s))        return 'Intel Xeon';
+        if (preg_match('/\bintel\b/', $s))                  return 'Intel';
+        return '';
+    };
     foreach ($rows as $p) {
         $pid = (int)$p['id'];
         if (empty($cyc[$pid])) continue;
@@ -36,6 +47,7 @@ try {
             'id'=>$pid, 'name'=>$p['name'], 'desc'=>$p['description'] ?? '',
             'loc'=>trim($p['location'] ?? '') ?: 'Other', 'flag'=>strtolower($p['location_flag'] ?? ''),
             'os'=>$p['os_label'] ?? '',
+            'proc'=>$proc_of(($p['name'] ?? '') . ' ' . ($p['description'] ?? '')),
             'vcpu'=>(int)$p['vcpu'], 'ram'=>(float)$p['ram_gb'], 'disk'=>(int)$p['disk_gb'], 'bw'=>(int)$p['bandwidth_gb'],
             'cycles'=>$cyc[$pid],
         ];
@@ -96,7 +108,14 @@ foreach ($packages as $p) {
     .plan-card.on .plan-tick{display:flex}
     .plan-tick{position:absolute;top:14px;right:14px;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;display:none;align-items:center;justify-content:center;font-size:12px}
     .plan-nm{font-size:15px;font-weight:800;color:var(--ink);letter-spacing:-.2px;padding-right:24px}
+    .plan-proc{display:inline-flex;align-items:center;gap:6px;margin-top:7px;font-size:12px;font-weight:700;color:#475569}
+    .plan-proc .chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--line);border-radius:6px;background:#f8fafc;font-size:11px}
     .plan-badge{display:inline-flex;align-items:center;gap:5px;margin-top:9px;padding:3px 9px;border-radius:99px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:800}
+    /* Processor filter pills (Step 2) */
+    .proc-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .proc-tab{padding:7px 14px;border:1.5px solid var(--line);border-radius:99px;background:#fff;font-size:12.5px;font-weight:700;color:#64748b;cursor:pointer;transition:all .13s;display:inline-flex;align-items:center;gap:6px}
+    .proc-tab:hover{border-color:#cbd5e1}
+    .proc-tab.on{background:var(--ink);border-color:var(--ink);color:#fff}
     .plan-specs{list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:9px}
     .plan-specs li{display:flex;align-items:center;gap:9px;font-size:13.5px;color:#475569}
     .plan-specs svg{width:15px;height:15px;color:#64748b;flex-shrink:0}
@@ -152,7 +171,7 @@ foreach ($packages as $p) {
     </div>
 
     <div class="dp-wrap">
-      <div class="dp-crumb"><?= htmlspecialchars($app_name) ?> / <b>Deploy VPS</b></div>
+      <div class="dp-crumb"><?= htmlspecialchars($app_name) ?> / Vps / <b>Deploy</b></div>
       <div class="dp-h1">Deploy VPS Server</div>
       <a href="<?= BASE_URL ?>/servers.php" class="dp-back">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -188,6 +207,7 @@ foreach ($packages as $p) {
           <!-- 2. Plan -->
           <div class="step locked" id="step-plan">
             <div class="step-hd"><div class="step-n">2</div><div><div class="step-t">Server Plan</div><div class="step-s" id="planSub">Select a location first</div></div></div>
+            <div class="proc-tabs" id="procTabs"></div>
             <div class="plan-grid" id="planGrid"></div>
           </div>
 
@@ -229,7 +249,8 @@ foreach ($packages as $p) {
 var PKGS = <?= json_encode($packages, JSON_HEX_APOS|JSON_HEX_QUOT) ?>;
 var CYCLE_NAMES = <?= json_encode($cycle_names) ?>, CYCLE_LBL = <?= json_encode($cycle_lbl) ?>;
 var BAL = <?= json_encode($balance_raw) ?>, CSRF='<?= $csrf ?>', BASE='<?= BASE_URL ?>';
-var sel = { loc:null, pkg:null, cyc:null };
+var sel = { loc:null, pkg:null, cyc:null, proc:'all' };
+var curPlans = [];
 function fmt(n){ return '₹'+(Math.round(n)==n?Number(n).toLocaleString('en-IN'):Number(n).toFixed(2)); }
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 function minCycle(p){ return p.cycles.reduce(function(a,b){return b.price<a.price?b:a;},p.cycles[0]); }
@@ -240,16 +261,44 @@ function unlock(id){ document.getElementById(id).classList.remove('locked'); }
 
 function pickLoc(el){
   document.querySelectorAll('.loc-card').forEach(function(c){c.classList.remove('on');});
-  el.classList.add('on'); sel.loc=el.getAttribute('data-loc'); sel.pkg=null; sel.cyc=null;
-  var list=PKGS.filter(function(p){return p.loc===sel.loc;});
-  document.getElementById('planSub').textContent=list.length+' plan'+(list.length==1?'':'s')+' available in '+sel.loc;
-  var grid=document.getElementById('planGrid'); grid.innerHTML='';
+  el.classList.add('on'); sel.loc=el.getAttribute('data-loc'); sel.pkg=null; sel.cyc=null; sel.proc='all';
+  curPlans = PKGS.filter(function(p){return p.loc===sel.loc;});
+  document.getElementById('planSub').textContent=curPlans.length+' plan'+(curPlans.length==1?'':'s')+' available in '+sel.loc;
+
+  // Processor filter pills — built from the distinct processors in this location
+  var procs = []; curPlans.forEach(function(p){ if(p.proc && procs.indexOf(p.proc)===-1) procs.push(p.proc); });
+  var tabs=document.getElementById('procTabs'); tabs.innerHTML='';
+  if(procs.length){
+    tabs.appendChild(makeProcTab('all','All', true));
+    procs.forEach(function(pr){ tabs.appendChild(makeProcTab(pr, pr, false)); });
+  }
+  renderPlans('all');
+
+  unlock('step-plan'); lock('step-opts'); document.getElementById('cycSeg').innerHTML='';
+  updateSummary();
+  document.getElementById('step-plan').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function makeProcTab(val, label, on){
+  var b=document.createElement('button'); b.type='button'; b.className='proc-tab'+(on?' on':''); b.setAttribute('data-proc',val);
+  b.innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>'+esc(label);
+  b.onclick=function(){ pickProc(val, b); };
+  return b;
+}
+function pickProc(proc, b){
+  document.querySelectorAll('.proc-tab').forEach(function(x){x.classList.remove('on');});
+  b.classList.add('on'); sel.proc=proc; renderPlans(proc);
+}
+function renderPlans(proc){
+  var grid=document.getElementById('planGrid'); grid.innerHTML=''; sel.pkg=null;
+  var list = (proc==='all') ? curPlans : curPlans.filter(function(p){return p.proc===proc;});
   list.forEach(function(p){
     var mc=minCycle(p);
     var card=document.createElement('button'); card.type='button'; card.className='plan-card';
     card.onclick=function(){ pickPlan(p,card); };
     card.innerHTML='<div class="plan-tick">✓</div><div class="plan-nm">'+esc(p.name)+'</div>'+
-      '<span class="plan-badge">'+(p.vcpu)+' vCPU</span>'+
+      (p.proc?'<div class="plan-proc"><span class="chip"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>'+esc(p.proc)+'</span></div>':'')+
+      '<span class="plan-badge">'+(p.vcpu)+' vCPU Dedicated</span>'+
       '<ul class="plan-specs">'+
         spec('<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/>',p.vcpu+' vCPU Cores')+
         spec('<rect x="2" y="7" width="20" height="10" rx="2"/><line x1="6" y1="11" x2="6" y2="13"/><line x1="10" y1="11" x2="10" y2="13"/>',p.ram+' GB RAM')+
@@ -259,9 +308,8 @@ function pickLoc(el){
       '<div class="plan-price">'+fmt(mc.price)+' <small>/ '+(CYCLE_LBL[mc.months]||mc.months+' mo')+'</small></div>';
     grid.appendChild(card);
   });
-  unlock('step-plan'); lock('step-opts'); document.getElementById('cycSeg').innerHTML='';
-  updateSummary();
-  document.getElementById('step-plan').scrollIntoView({behavior:'smooth',block:'nearest'});
+  if(!list.length){ grid.innerHTML='<div style="grid-column:1/-1;color:#94a3b8;font-size:13px;padding:8px 0">No plans for this processor.</div>'; }
+  document.getElementById('cycSeg').innerHTML=''; lock('step-opts'); updateSummary();
 }
 
 function pickPlan(p,card){
