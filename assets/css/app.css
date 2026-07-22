@@ -296,6 +296,20 @@ input[readonly],input:disabled {background: #f4f4f4;}
 .btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
 .btn svg { width: 14px; height: 14px; }
 
+/* ── SparrowHost design system: black primary CTA ────────────
+   Deploy buttons are redefined inline per page with the brand colour;
+   force them to solid black here (overrides those inline <style> rules). */
+.btn-deploy { background: #111827 !important; box-shadow: none !important; border-radius: 10px !important; }
+.btn-deploy:hover { background: #1f2937 !important; }
+
+/* Stat cards: cleaner card + optional tinted icon box (opt-in via .stat-ico) */
+.stat-card { border-radius: 14px; padding: 16px 18px; box-shadow: none; }
+.stat-card .stat-ico { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+.stat-card .stat-ico svg { width: 18px; height: 18px; }
+.stat-value { font-size: 24px; }
+.list-card { border-radius: 14px; box-shadow: none; }
+.topbar-title { font-size: 15px; font-weight: 800; }
+
 /* ── Forms ───────────────────────────────────────────────── */
 .form-group { margin-bottom: 15px; }
 .flabel { display: block; font-size: 12px; font-weight: 600; color: var(--gray-700); margin-bottom: 5px; }
