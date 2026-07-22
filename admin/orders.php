@@ -85,8 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
             'used_bandwidth_gb'  => 0,
         ]);
         try {
-            db()->prepare("UPDATE servers SET billing_type='prepaid', expires_at=? WHERE id=?")
-                ->execute([$order['expires_at'], $sid]);
+            db()->prepare("UPDATE servers SET billing_type='prepaid', expires_at=?, server_type=?, billing_months=? WHERE id=?")
+                ->execute([$order['expires_at'], (($order['ptype'] ?? 'vps')==='dedicated'?'dedicated':'vps'), $months, $sid]);
         } catch (Throwable $e) {}
         db()->prepare("UPDATE vps_package_orders SET status='active', server_id=? WHERE id=?")->execute([$sid, $oid]);
 
@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
                         'price_hourly'=>0.0, 'price_monthly'=>round((float)$order['amount']/$months,2), 'currency'=>'INR',
                         'root_password'=>$enc, 'total_bandwidth_gb'=>(int)$order['bandwidth_gb'], 'used_bandwidth_gb'=>0,
                     ]);
-                    try { db()->prepare("UPDATE servers SET billing_type='prepaid', expires_at=? WHERE id=?")->execute([$order['expires_at'], $sid]); } catch (Throwable $e) {}
+                    try { db()->prepare("UPDATE servers SET billing_type='prepaid', expires_at=?, server_type='vps', billing_months=? WHERE id=?")->execute([$order['expires_at'], $months, $sid]); } catch (Throwable $e) {}
                     db()->prepare("UPDATE vps_package_orders SET status='active', server_id=?, vpsid=? WHERE id=?")->execute([$sid, (string)$vpsid, $oid]);
                     $msg = "Order #$oid provisioned automatically — VPS $vpsid / server #$sid.";
                 } catch (Throwable $e) {

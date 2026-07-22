@@ -166,12 +166,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf_token'] ??
 }
 
 // ── Counts ──────────────────────────────────────────────────
+// My Servers = VPS only. Apply a type filter only if the column exists.
+$has_type_col = false;
+try { foreach (db()->query("SHOW COLUMNS FROM servers LIKE 'server_type'")->fetchAll() as $c) $has_type_col = true; } catch (Throwable $e) {}
+$type_and = $has_type_col ? " AND COALESCE(server_type,'vps') <> 'dedicated'" : '';
+
 $counts = [
-    'all'         => (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND deleted_at IS NULL")->fetchColumn(),
-    'running'     => (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND status='running' AND deleted_at IS NULL")->fetchColumn(),
-    'stopped'     => (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND status='stopped' AND deleted_at IS NULL")->fetchColumn(),
-    'suspended'   => (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND status='suspended' AND deleted_at IS NULL")->fetchColumn(),
-    'provisioning'=> (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND status='provisioning' AND deleted_at IS NULL")->fetchColumn(),
+    'all'         => (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND deleted_at IS NULL$type_and")->fetchColumn(),
+    'running'     => (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND status='running' AND deleted_at IS NULL$type_and")->fetchColumn(),
+    'stopped'     => (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND status='stopped' AND deleted_at IS NULL$type_and")->fetchColumn(),
+    'suspended'   => (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND status='suspended' AND deleted_at IS NULL$type_and")->fetchColumn(),
+    'provisioning'=> (int)db()->query("SELECT COUNT(*) FROM servers WHERE user_id=$uid AND status='provisioning' AND deleted_at IS NULL$type_and")->fetchColumn(),
 ];
 
 // ── Filters ──────────────────────────────────────────────────
@@ -182,7 +187,7 @@ $per    = 10;
 $offset = ($page - 1) * $per;
 
 // ── Query ────────────────────────────────────────────────────
-$where  = ['user_id = ?', 'deleted_at IS NULL'];
+$where  = array_values(array_filter(['user_id = ?', 'deleted_at IS NULL', ($has_type_col ? "COALESCE(server_type,'vps') <> 'dedicated'" : '')]));
 $params = [$uid];
 
 if ($filter !== 'all') {

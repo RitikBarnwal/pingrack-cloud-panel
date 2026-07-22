@@ -168,7 +168,7 @@ $has_orders = $st_total > 0;
         <div class="card-hd"><h3>Your Dedicated Servers</h3><p>Servers you've ordered and their status</p></div>
         <?php if ($has_orders): ?>
         <div style="overflow-x:auto"><table class="ord-tbl">
-          <thead><tr><th>Server</th><th>Configuration</th><th>Cycle</th><th>Amount</th><th>Status</th><th>Expires</th><th>Ordered</th></tr></thead>
+          <thead><tr><th>Server</th><th>Configuration</th><th>Cycle</th><th>Amount</th><th>Status</th><th>Expires</th><th>Ordered</th><th></th></tr></thead>
           <tbody>
           <?php foreach ($my_orders as $o):
             $st=$o['status']; $stc=$st==='active'?'st-active':($st==='pending'?'st-pending':'st-refunded');
@@ -182,6 +182,11 @@ $has_orders = $st_total > 0;
             <td><span class="st <?= $stc ?>"><span class="dot"></span><?= $stlabel ?></span></td>
             <td><?= $o['expires_at'] ? date('d M Y', strtotime($o['expires_at'])) : '—' ?></td>
             <td><?= date('d M Y', strtotime($o['created_at'])) ?></td>
+            <td style="text-align:right">
+              <?php if ($o['status'] === 'active' && !empty($o['server_id'])): ?>
+                <a href="<?= BASE_URL ?>/dedicated-view.php?id=<?= (int)$o['server_id'] ?>" class="btn-ink" style="padding:6px 12px;font-size:12px;border-radius:8px">Manage →</a>
+              <?php else: ?><span style="color:var(--muted);font-size:12px">—</span><?php endif; ?>
+            </td>
           </tr>
           <?php endforeach; ?>
           </tbody>

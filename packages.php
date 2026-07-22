@@ -193,9 +193,12 @@ foreach ($packages as $p) {
 
           <!-- 3. Additional options -->
           <div class="step locked" id="step-opts">
-            <div class="step-hd"><div class="step-n">3</div><div><div class="step-t">Additional Options</div><div class="step-s">Set a hostname for your server</div></div></div>
+            <div class="step-hd"><div class="step-n">3</div><div><div class="step-t">Additional Options</div><div class="step-s">Hostname &amp; SSH access</div></div></div>
             <div class="lbl-small">Hostname <span style="color:var(--muted);font-weight:500">(optional)</span></div>
-            <input class="host-inp" id="host" placeholder="e.g. web-server-01" maxlength="60">
+            <input class="host-inp" id="host" placeholder="e.g. web-server-01" maxlength="60" style="margin-bottom:16px">
+            <div class="lbl-small">SSH Public Keys <span style="color:var(--muted);font-weight:500">(optional — one per line, installed at boot)</span></div>
+            <textarea class="host-inp" id="sshkeys" rows="3" placeholder="ssh-ed25519 AAAA... user@host&#10;ssh-rsa AAAA..." style="font-family:'JetBrains Mono',monospace;font-size:12.5px;resize:vertical"></textarea>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:6px">Paste your public key(s) to log in without a password. Leave blank to use the root password (emailed after deploy).</div>
           </div>
         </div>
 
@@ -305,11 +308,12 @@ function setDeploy(ready,price){
 function doDeploy(){
   if(!sel.pkg||!sel.cyc) return;
   var host=document.getElementById('host').value.trim();
+  var ssh=document.getElementById('sshkeys').value.trim();
   if(!confirm('Deploy "'+sel.pkg.name+'" in '+sel.loc+' for '+document.getElementById('sumTotal').textContent+'?\n\nCharged from your wallet now (prepaid).')) return;
   var btn=document.getElementById('deployBtn'); btn.disabled=true; var orig=btn.innerHTML;
   btn.innerHTML='<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="15" height="15"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.86"/></svg> Deploying…';
   fetch(BASE+'/api/vps-package-order.php',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({package_id:sel.pkg.id, cycle_months:sel.cyc.months, hostname:host, csrf:CSRF})
+    body:JSON.stringify({package_id:sel.pkg.id, cycle_months:sel.cyc.months, hostname:host, ssh_keys:ssh, csrf:CSRF})
   }).then(function(r){return r.json();}).then(function(d){
     if(d.ok){ toast('✅ '+(d.message||'Server ordered!'),'ok'); setTimeout(function(){window.location.href=d.redirect||(BASE+'/servers.php');},1400); }
     else{ toast('⚠ '+(d.error||'Order failed'),'fail'); btn.disabled=false; btn.innerHTML=orig; }

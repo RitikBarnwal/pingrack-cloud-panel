@@ -165,6 +165,14 @@ try {
         'user_lname' => '',
     ];
 
+    // SSH keys (public keys) → passed to Virtualizor addvs as newline-separated.
+    $ssh_keys = $body['ssh_keys'] ?? '';
+    if (is_array($ssh_keys)) $ssh_keys = implode("\n", $ssh_keys);
+    $ssh_keys = trim((string)$ssh_keys);
+    if ($ssh_keys !== '') {
+        $payload['sshkeys'] = $ssh_keys;
+    }
+
     $raw = $client->post('addvs', [], $payload);
     if (($raw['done'] ?? 0) != 1) {
         $fail('Virtualizor: ' . VirtualizorClient::errMsg($raw, 'provisioning failed (done=0)'));
@@ -217,10 +225,10 @@ try {
         'used_bandwidth_gb'  => 0,
     ]);
 
-    // Mark server prepaid + set expiry (columns added by install-db.php)
+    // Mark server prepaid + set expiry + type (columns added by install-db.php)
     try {
-        db()->prepare("UPDATE servers SET billing_type='prepaid', expires_at=? WHERE id=?")
-            ->execute([$expires_at, $server_id]);
+        db()->prepare("UPDATE servers SET billing_type='prepaid', expires_at=?, server_type='vps', billing_months=? WHERE id=?")
+            ->execute([$expires_at, $cycle_months, $server_id]);
     } catch (Throwable $e) { error_log('[pkg-order] set prepaid failed: '.$e->getMessage()); }
 
     db()->prepare("UPDATE vps_package_orders SET status='active', server_id=?, vpsid=? WHERE id=?")

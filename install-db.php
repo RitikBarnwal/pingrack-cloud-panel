@@ -91,6 +91,9 @@ $alters = [
     // servers: prepaid support so hourly cron can skip + expiry can suspend
     ['servers',            'billing_type', "ALTER TABLE servers ADD COLUMN billing_type ENUM('hourly','prepaid') NOT NULL DEFAULT 'hourly'"],
     ['servers',            'expires_at',   "ALTER TABLE servers ADD COLUMN expires_at DATETIME NULL"],
+    // VPS vs Dedicated so 'My Servers' and 'Dedicated' show the right ones
+    ['servers',            'server_type',  "ALTER TABLE servers ADD COLUMN server_type ENUM('vps','dedicated') NOT NULL DEFAULT 'vps'"],
+    ['servers',            'billing_months',"ALTER TABLE servers ADD COLUMN billing_months SMALLINT UNSIGNED NOT NULL DEFAULT 1"],
     // orders: which cycle + when it expires
     ['vps_package_orders', 'cycle_months', "ALTER TABLE vps_package_orders ADD COLUMN cycle_months SMALLINT UNSIGNED NOT NULL DEFAULT 1"],
     ['vps_package_orders', 'expires_at',   "ALTER TABLE vps_package_orders ADD COLUMN expires_at DATETIME NULL"],
